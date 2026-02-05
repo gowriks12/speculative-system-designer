@@ -1,0 +1,79 @@
+{
+  "scaling": {
+    "id": "scaling",
+    "description": "Assumes usage and data growth outpace original projections.",
+    "assumption": "Traffic and data volume increase 10x within 18 months.",
+    "stance": "pessimistic",
+    "stress_points": [
+      "stateful services",
+      "database write throughput",
+      "synchronous dependencies",
+      "cross-region latency"
+    ],
+    "failure_modes": [
+      "single-region bottlenecks",
+      "unbounded queue growth",
+      "hot partitions in primary datastore",
+      "cascading retries under partial failure"
+    ],
+    "early_warning_signals": [
+      "p95 latency diverges from p50",
+      "queue depth grows faster than traffic",
+      "manual scaling interventions increase",
+      "cache hit ratio degrades over time"
+    ],
+    "review_prompt": "Assume growth happens faster than planned. Be pessimistic. Identify the first component that becomes a bottleneck and explain why it fails before others."
+  },
+
+  "security_abuse": {
+    "id": "security_abuse",
+    "description": "Assumes malicious usage, misconfiguration, and insider mistakes are inevitable.",
+    "assumption": "Attackers are competent and internal misconfigurations will occur.",
+    "stance": "adversarial",
+    "stress_points": [
+      "authentication boundaries",
+      "authorization logic",
+      "secrets management",
+      "rate limiting"
+    ],
+    "failure_modes": [
+      "privilege escalation through misconfigured roles",
+      "abuse of internal APIs",
+      "data exfiltration via excessive permissions",
+      "denial-of-service through legitimate endpoints"
+    ],
+    "early_warning_signals": [
+      "unexpected access patterns",
+      "spikes in error rates tied to auth checks",
+      "manual security exceptions becoming common",
+      "monitoring blind spots in internal services"
+    ],
+    "review_prompt": "Assume attackers understand the system better than the designers. Look for trust boundaries that are implicit or unenforced."
+  },
+
+  "regulatory_compliance": {
+    "id": "regulatory_compliance",
+    "description": "Assumes regulatory requirements change after the system is in production.",
+    "assumption": "New compliance or audit requirements appear with short notice.",
+    "stance": "literal",
+    "stress_points": [
+      "data residency",
+      "audit logging",
+      "data retention policies",
+      "access traceability"
+    ],
+    "failure_modes": [
+      "inability to reconstruct historical access",
+      "hard-coded data flows that violate residency rules",
+      "lack of separation between operational and audit data",
+      "retroactive compliance requiring major refactors"
+    ],
+    "early_warning_signals": [
+      "audit requests require manual data reconstruction",
+      "logs lack sufficient context",
+      "compliance discussions deferred repeatedly",
+      "inconsistent data classification across services"
+    ],
+    "review_prompt": "Assume compliance requirements arrive late and are non-negotiable. Identify which design decisions make compliance expensive or impossible."
+  }
+}
