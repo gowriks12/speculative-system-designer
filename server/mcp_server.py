@@ -7,7 +7,6 @@ from server.tools.declare_tradeoff import declare_tradeoff
 from server.resources.roots import load_roots
 from mcp.server.fastmcp import Context
 from mcp.types import SamplingMessage, TextContent
-
 mcp = FastMCP("SpeculativeSystemDesigner")
 
 # ---------- RESOURCES ----------

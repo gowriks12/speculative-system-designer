@@ -10,3 +10,5 @@ def declare_tradeoff(critique_id: str, tradeoff_statement: str) -> dict:
         "message": "Tradeoff recorded. Critique can be resolved.",
         "tradeoff": tradeoff_statement
     }
+
+
