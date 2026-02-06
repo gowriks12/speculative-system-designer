@@ -209,3 +209,6 @@ __marimo__/
 
 .env
 .venv
+
+server/__pycache__
+client/__pycache__

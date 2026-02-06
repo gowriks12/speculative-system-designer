@@ -1,28 +1,50 @@
+from pathlib import Path
+from openai import OpenAI
 from server.resources.critiques import create_scaling_critique
+import jsonschema
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+client = OpenAI()
+
+PROMPT_PATH = Path("server/prompts/scaling_future.txt")
+
+
+def load_prompt():
+    return PROMPT_PATH.read_text()
+
 
 def simulate_scaling_future(architecture_text: str) -> dict:
-    """
-    Simulates the scaling future and produces a critique artifact.
-    """
-    risks = []
 
-    text = architecture_text.lower()
+    evaluation_prompt = load_prompt()
 
-    if "single" in text:
-        risks.append("Single point of failure under scale.")
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=[
+            {
+                "role": "system",
+                "content": evaluation_prompt
+            },
+            {
+                "role": "user",
+                "content": architecture_text
+            }
+        ],
+        # text=jsonschema
+    )
 
-    if "synchronous" in text:
-        risks.append("Synchronous processing limits throughput.")
+    result = response.output[0].content[0].text
+    # print(result)
+    import json
+    parsed = json.loads(result)
+    # print(parsed)
 
-    if "manual" in text:
-        risks.append("Manual operations will not scale with load.")
-
-    if not risks:
-        risks.append("Scaling risks unclear due to vague architecture.")
-
-    critique = create_scaling_critique(risks)
+    critique = create_scaling_critique(parsed["risks"])
 
     return {
         "status": "critique_generated",
-        "critique": critique.model_dump()
+        "critique": critique.model_dump(),
+        "analysis": parsed["summary"]
     }
+
+
