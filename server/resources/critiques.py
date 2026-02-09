@@ -10,6 +10,7 @@ class Critique(BaseModel):
     required_tradeoff: str
     resolved: bool = False
 
+
 def create_scaling_critique(risks: List[str]) -> Critique:
     return Critique(
         id=str(uuid4()),
@@ -18,3 +19,14 @@ def create_scaling_critique(risks: List[str]) -> Critique:
         risks=risks,
         required_tradeoff="Scaling tradeoff not yet declared."
     )
+
+CRITIQUE_STORE: dict[str, Critique] = {}
+
+def save_critique(critique: Critique):
+    CRITIQUE_STORE[critique.id] = critique
+
+def get_critique(critique_id: str) -> Critique | None:
+    return CRITIQUE_STORE.get(critique_id)
+
+def unresolved_critiques() -> list[Critique]:
+    return [c for c in CRITIQUE_STORE.values() if not c.resolved]

@@ -22,7 +22,7 @@
       "manual scaling interventions increase",
       "cache hit ratio degrades over time"
     ],
-    "review_prompt": "Assume growth happens faster than planned. Be pessimistic. Identify the first component that becomes a bottleneck and explain why it fails before others."
+    "review_prompt": "You are an architecture review board evaluating a system under scaling pressure. Given the architecture description, determine:  1. First bottleneck that will appear, 2. Why it fails first, 3. Early warning signal operators would see, 4. A concise list of scaling risks (max 5), Respond ONLY in JSON: { 'summary': '...', 'risks': ['...', '...']}"
   },
 
   "security_abuse": {
@@ -48,7 +48,7 @@
       "manual security exceptions becoming common",
       "monitoring blind spots in internal services"
     ],
-    "review_prompt": "Assume attackers understand the system better than the designers. Look for trust boundaries that are implicit or unenforced."
+    "review_prompt": "You are an adversarial security review board evaluating a system under active abuse and misconfiguration. Given the architecture description, determine: 1. The first security boundary that fails or is exploited, 2. Why it fails before other defenses, 3. The earliest observable signal defenders would see, 4. A concise list of security and abuse risks (max 5). Assume attackers are competent and internal misconfiguration is inevitable. Respond ONLY in JSON: { \"summary\": \"...\", \"risks\": [\"...\", \"...\"] }"
   },
 
   "regulatory_compliance": {
@@ -74,6 +74,6 @@
       "compliance discussions deferred repeatedly",
       "inconsistent data classification across services"
     ],
-    "review_prompt": "Assume compliance requirements arrive late and are non-negotiable. Identify which design decisions make compliance expensive or impossible."
+    "review_prompt": "You are a regulatory and compliance review board evaluating a system after new non-negotiable requirements are imposed. Given the architecture description, determine: 1. The first design decision that violates or complicates compliance, 2. Why it becomes non-compliant before other components, 3. The earliest signal that compliance teams or auditors would notice, 4. A concise list of regulatory and compliance risks (max 5). Assume requirements arrive late and retroactive compliance is mandatory. Respond ONLY in JSON: { \"summary\": \"...\", \"risks\": [\"...\", \"...\"] }"
   }
 }
