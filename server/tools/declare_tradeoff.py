@@ -1,23 +1,31 @@
 from server.resources.critiques import get_critique
 
-def declare_tradeoff(critique_id: str, tradeoff_statement: str) -> dict:
-    critique = get_critique(critique_id)
+from server.state.store import REVIEW_STORE
+from server.resources.critiques import CRITIQUE_STORE
 
+def declare_tradeoff(architecture_id: str,
+                     critique_id: str,
+                     tradeoff_statement: str) -> dict:
+
+    if architecture_id not in REVIEW_STORE:
+        return {"status": "error", "reason": "Unknown architecture"}
+
+    critique = CRITIQUE_STORE.get(critique_id)
     if not critique:
-        return {"status": "error", "reason": "Critique not found"}
+        return {"status": "error", "reason": "Unknown critique"}
 
-    if len(tradeoff_statement.strip()) < 30:
-        return {
-            "status": "rejected",
-            "reason": "Tradeoff declaration too weak."
-        }
+    # Store tradeoff
+    REVIEW_STORE[architecture_id]["tradeoffs"].append({
+        "critique_id": critique_id,
+        "statement": tradeoff_statement
+    })
 
     critique.required_tradeoff = tradeoff_statement
     critique.resolved = True
 
     return {
         "status": "accepted",
-        "message": "Tradeoff recorded and critique resolved",
-        "critique_id": critique_id,
-        "tradeoff_statement": tradeoff_statement
+        "message": "Tradeoff stored",
+        "total_tradeoffs": len(REVIEW_STORE[architecture_id]["tradeoffs"])
     }
+

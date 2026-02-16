@@ -1,5 +1,6 @@
 from server.resources.architectures import create_architecture
 from server.resources.roots import load_roots
+from server.state.store import REVIEW_STORE
 
 def evaluate_roots(architecture_text: str) -> list[str]:
     """
@@ -24,19 +25,12 @@ def evaluate_roots(architecture_text: str) -> list[str]:
 
 def submit_architecture(description: str) -> dict:
     architecture = create_architecture(description)
-    violations = evaluate_roots(description)
-
-    if violations:
-        architecture.status = "rejected"
-        architecture.root_violations = violations
-
-        return {
-            "status": "rejected",
-            "reason": "Root constraints violated",
-            "violations": violations
-        }
-
-    architecture.status = "under_review"
+    REVIEW_STORE[architecture.id] = {
+        "initial_architecture": description,
+        "tradeoffs": [],
+        "critiques": [],
+        "final_architecture": None
+    }
 
     return {
         "status": "accepted",
