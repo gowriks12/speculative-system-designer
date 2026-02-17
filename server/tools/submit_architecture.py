@@ -33,7 +33,6 @@ def submit_architecture(description: str) -> dict:
     }
 
     return {
-        "status": "accepted",
-        "architecture_id": architecture.id,
-        "message": "Architecture accepted for future review"
+        "status": "saved",
+        "architecture_id": architecture.id
     }

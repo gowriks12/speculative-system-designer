@@ -2,6 +2,7 @@ from mcp.server.fastmcp import FastMCP
 
 # import your existing logic
 from server.resources.critiques import *
+from server.resources.futures import *
 from server.tools.submit_architecture import submit_architecture
 # from server.tools.simulate_future import simulate_future
 from server.tools.declare_tradeoff import declare_tradeoff
@@ -17,8 +18,8 @@ from server.state.store import REVIEW_STORE
 mcp = FastMCP("SpeculativeSystemDesigner")
 
 ROOT_PATH = Path(__file__).parent.parent
-with open(ROOT_PATH / "data/futures.json", "r") as f:
-    FUTURES = json.load(f)
+
+FUTURES = load_futures()
 
 # class TradeoffSelection(BaseModel):
 #     selected_option: Literal["A", "B", "C"] = Field(
@@ -34,6 +35,10 @@ class TradeoffSelection(BaseModel):
 @mcp.resource("roots://governance")
 def roots_resource():
     return load_roots()
+
+@mcp.resource("roots://futures")
+def futures_resource():
+    return load_futures()
 
 
 # ---------- TOOLS ----------
@@ -63,10 +68,13 @@ async def generate_architecture_tool(ctx: Context, problem_statement: str):
         ],
         max_tokens=800,
     )
+    architecture_text = result.content.text
+    architecture = submit_architecture(architecture_text)
 
     return {
         "status": "architecture_generated",
-        "architecture": result.content.text
+        "architecture_id": architecture["architecture_id"],
+        "architecture_text":architecture_text
     }
 
 
@@ -233,30 +241,45 @@ async def simulate_future_tool(ctx: Context,
 @mcp.tool()
 async def evaluate_architecture_tool(ctx: Context,
                                      architecture_id: str):
-    
-    # print("FUTURESSSSSSS ")
+    # Step 1: Simulate futures and identify critiques
+    print("\n--- EVALUATING FUTURES ---")
     critiques = []
-    
     for future_id in FUTURES.keys():
-        print(future_id)
+        # print(future_id)
         result = await simulate_future_tool(
             ctx,
             architecture_id=architecture_id,
             future_id=future_id,
         )
-
         critiques.append(result["critique"])
+    
+    # Step 2: For each Critique, propose tradeoff and declare it
+    for critique in critiques:
+        critique_id = critique["id"]
+        critique_summary = critique["summary"]
+
+        resolution = await propose_tradeoff_tool(
+            ctx,
+            architecture_id,
+            critique_id, 
+            critique_summary)
+        
+    # Step 3: Using the critiques and tradeoffs selected, generate final architecture
+    final_architecture = await finalize_architecture_tool(
+            ctx,
+            architecture_id
+        )
+
 
     return {
         "status": "evaluation_complete",
-        "critique_count": len(critiques),
-        "critiques": critiques,
+        "final_architecture": final_architecture,
     }
 
 
-@mcp.tool()
-def declare_tradeoff_tool(architecture_id: str, critique_id: str, tradeoff: str):
-    return declare_tradeoff(architecture_id, critique_id, tradeoff)
+# @mcp.tool()
+# def declare_tradeoff_tool(architecture_id: str, critique_id: str, tradeoff: str):
+#     return declare_tradeoff(architecture_id, critique_id, tradeoff)
 
 
 
@@ -292,7 +315,7 @@ async def finalize_architecture_tool(ctx: Context, architecture_id: str):
                         "The following tradeoffs have been explicitly accepted:\n\n"
                         f"{tradeoff_text}\n\n"
                         "Produce a final architecture that clearly and concretely reflects these tradeoffs.\n"
-                        "Be technical and specific."
+                        "Be technical and specific. Keep the complete architecture conscise within 10 sentences."
                     )
                 ),
             )

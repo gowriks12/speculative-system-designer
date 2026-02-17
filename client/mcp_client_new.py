@@ -53,9 +53,9 @@ async def handle_elicitation(
     print(params.message)
 
     # Print schema so user knows what to enter
-    if params.model_json_schema():
-        print("\nExpected Schema:")
-        print(json.dumps(params.model_json_schema(), indent=2))
+    # if params.model_json_schema():
+        # print("\nExpected Schema:")
+        # print(json.dumps(params.model_json_schema(), indent=2))
 
     # Simple CLI input loop
     user_input = input("\nEnter option ID (A/B/C) or JSON: ").strip()
@@ -133,21 +133,22 @@ async def run():
             )
 
             initial_architecture = generation.content[0].text
+            architecture = json.loads(initial_architecture)
             print("\nInitial Architecture:\n")
-            print(initial_architecture)
+            print(architecture["architecture_text"])
 
             # ---------------------------------
             # Submit & save architecture
             # ---------------------------------
-            print("\n--- SUBMITTING ARCHITECTURE ---")
+            # print("\n--- SUBMITTING ARCHITECTURE ---")
 
-            submission = await session.call_tool(
-                "submit_architecture_tool",
-                {"description": initial_architecture},
-            )
+            # submission = await session.call_tool(
+            #     "submit_architecture_tool",
+            #     {"description": initial_architecture},
+            # )
 
-            submission_data = json.loads(submission.content[0].text)
-            architecture_id = submission_data["architecture_id"]
+            # submission_data = json.loads(submission.content[0].text)
+            architecture_id = architecture["architecture_id"]
 
             print("\nArchitecture ID:", architecture_id)
             # architecture_id = "35e96896-ca99-40ef-9cb0-38767b992085"
@@ -163,53 +164,53 @@ async def run():
 
             # evaluation_data = json.loads(evaluation.content[0].text)
             
-            raw_eval_res = evaluation.content[0].text
-            print(raw_eval_res)
-            if raw_eval_res.startswith("```"):
-                raw_eval_res = raw_eval_res.split("```json")[1].strip("```")
-            evaluation_result = json.loads(raw_eval_res)
+            # raw_eval_res = evaluation.content[0].text
+            # print(raw_eval_res)
+            # if raw_eval_res.startswith("```"):
+            #     raw_eval_res = raw_eval_res.split("```json")[1].strip("```")
+            # evaluation_result = json.loads(raw_eval_res)
 
-            critiques = evaluation_result["critiques"]
+            # critiques = evaluation_result["critiques"]
 
-            print(f"\nTotal Critiques Generated: {len(critiques)}")
+            # print(f"\nTotal Critiques Generated: {len(critiques)}")
 
             # ---------------------------------
             # For each critique → resolve tradeoff
             # ---------------------------------
-            for critique in critiques:
+            # for critique in critiques:
 
-                critique_id = critique["id"]
-                critique_summary = critique["summary"]
+            #     critique_id = critique["id"]
+            #     critique_summary = critique["summary"]
 
-                print("\n---------------------------------")
-                print("Future:", critique["future"])
-                print("Summary:", critique["summary"])
-                print("Risks:", critique["risks"])
-                print("---------------------------------\n")
+            #     print("\n---------------------------------")
+            #     print("Future:", critique["future"])
+            #     print("Summary:", critique["summary"])
+            #     print("Risks:", critique["risks"])
+            #     print("---------------------------------\n")
 
-                resolution = await session.call_tool(
-                    "propose_tradeoff_tool",
-                    {
-                        "architecture_id": architecture_id,
-                        "critique_id": critique_id,
-                        "critique_summary": critique_summary
-                    },
-                )
+            #     resolution = await session.call_tool(
+            #         "propose_tradeoff_tool",
+            #         {
+            #             "architecture_id": architecture_id,
+            #             "critique_id": critique_id,
+            #             "critique_summary": critique_summary
+            #         },
+            #     )
 
-                print("Tradeoff Resolution Result:")
-                print(resolution.content[0].text)
+            #     print("Tradeoff Resolution Result:")
+            #     print(resolution.content[0].text)
             
             # ---------------------------------
             # Finalize architecture
             # ---------------------------------
-            print("\n--- FINALIZING ARCHITECTURE ---")
+            # print("\n--- FINALIZING ARCHITECTURE ---")
 
-            finalization = await session.call_tool(
-                "finalize_architecture_tool",
-                {"architecture_id": architecture_id},
-            )
+            # finalization = await session.call_tool(
+            #     "finalize_architecture_tool",
+            #     {"architecture_id": architecture_id},
+            # )
 
-            final_data = json.loads(finalization.content[0].text)
+            final_data = json.loads(evaluation.content[0].text)
 
             print("\n=== FINAL GOVERNED ARCHITECTURE ===\n")
             print(final_data["final_architecture"])

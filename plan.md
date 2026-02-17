@@ -17,3 +17,11 @@ Before you open main.py, confirm:
 # Prompts that encode creativity and synthesis belong to the client.
 
 # “Before I wrote any code, I wrote down the futures I was afraid of and the constraints I wasn’t willing to violate. Everything else in the system exists to enforce those two ideas.”
+
+Next Steps 
+    - [DONE] create a full orchestration tool that calls every other tool and orchestrates everything without needing a client
+    - stdio way of starting server
+    - Download claude desktop
+    - Integrate with claude desktop
+    - Majorly two different tools in the server {generate architecture with root contraints} {Evaluate the architecture with simulated futures and generates }
+
