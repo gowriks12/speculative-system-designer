@@ -58,14 +58,18 @@ async def handle_elicitation(
         print(json.dumps(params.model_json_schema(), indent=2))
 
     # Simple CLI input loop
-    user_input = input("\nEnter your response as JSON: ").strip()
+    user_input = input("\nEnter option ID (A/B/C) or JSON: ").strip()
 
     try:
-        parsed = json.loads(user_input)
+        # If user typed just A/B/C, wrap it
+        if len(user_input) == 1 and user_input.upper() in {"A", "B", "C"}:
+            parsed = {"selected_option": user_input.upper()}
+        else:
+            parsed = json.loads(user_input)
 
         return ElicitResult(
             action="accept",
-            data=parsed
+            content=parsed
         )
 
     except Exception as e:
