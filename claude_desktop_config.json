@@ -1,0 +1,16 @@
+{
+  "preferences": {
+    "sidebarMode": "chat",
+    "coworkScheduledTasksEnabled": false
+  },
+  "mcpServers": {
+    "SSD-server": {
+      "command": "C:\\Users\\gowri\\Documents\\Projects\\MCP\\SpeculativeSystemDesigner\\.venv\\Scripts\\python.exe",
+      "args": ["C:\\Users\\gowri\\Documents\\Projects\\MCP\\SpeculativeSystemDesigner\\server\\mcp_server.py"],
+      "cwd": "C:\\Users\\gowri\\Documents\\Projects\\MCP\\SpeculativeSystemDesigner",
+      "env": {
+        "PYTHONPATH": "C:\\Users\\gowri\\Documents\\Projects\\MCP\\SpeculativeSystemDesigner"
+      }
+    }
+  }
+}

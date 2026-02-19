@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
 
-ROOTS_PATH = Path("data/roots.json")
+# ROOTS_PATH = Path("data/roots.json")
+ROOT_PATH = Path(__file__).parent.parent.parent
+
 
 def load_roots() -> dict:
-    with open(ROOTS_PATH, "r") as f:
+    with open(ROOT_PATH/"data/roots.json", "r") as f:
         return json.load(f)
 
 def format_roots_for_prompt(roots):
