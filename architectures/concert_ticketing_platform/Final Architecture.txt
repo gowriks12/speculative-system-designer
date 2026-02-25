@@ -1,0 +1,203 @@
+Generated: 2026-02-25 01:14 UTC
+============================================================
+
+# Concert Ticketing Platform — Final Consolidated Architecture
+
+## Overview
+A cloud-agnostic, production-grade web application for buying, selling, and reselling tickets to concert events. This document consolidates the initial architecture with all simulated future scenarios: scaling, security & abuse prevention, and regulatory compliance.
+
+---
+
+## System Goals
+- Allow event organizers to list concerts and manage ticket inventory
+- Allow buyers to search, reserve, and purchase tickets securely
+- Allow sellers to list and transfer tickets peer-to-peer (resale)
+- Handle traffic spikes during high-demand on-sale events
+- Prevent fraud, scalping bots, and duplicate ticket use
+- Comply with global data privacy, ticketing, and financial regulations
+
+---
+
+## Architecture Layers
+
+### 1. Frontend
+- **Framework:** React (Next.js) — SSR/ISR for SEO on event pages, CSR for dynamic checkout flows
+- **Hosting:** Static assets on S3-compatible object storage + CDN (Cloudflare or Fastly)
+- **Accessibility:** WCAG 2.1 AA compliant; axe-core automated tests in CI pipeline; text-based seat map fallback for screen readers
+- **Key Pages:**
+  - Event discovery / search
+  - Event detail + interactive seat map (with accessible fallback)
+  - Checkout flow with full fee transparency (all-in pricing)
+  - Virtual waiting room UI (queue position via WebSocket)
+  - Seller dashboard (list tickets, track sales, KYC status)
+  - Buyer dashboard (my tickets, QR codes, data export)
+  - Consent management (cookie preferences, marketing opt-ins)
+
+---
+
+### 2. API Gateway
+- Single entry point for all client traffic
+- Responsibilities: routing, authentication verification, per-user/per-IP rate limiting (token bucket), WAF integration, regional data residency routing (EU → EU cluster, US → US cluster)
+- **Bot protection:** hCaptcha + proof-of-work challenges at checkout; shadow banning for abusive accounts
+
+---
+
+### 3. Backend Services (Microservices)
+Originally a modular monolith, decomposed into independently scalable services as load demands:
+
+| Service | Responsibility |
+|---|---|
+| **Event Service** | CRUD for events, venues, ticket tiers, organizer management |
+| **Inventory Service** | Seat/ticket reservation with Redis distributed locking + sharding by event_id |
+| **Waiting Room Service** | Redis Sorted Set queue; WebSocket push for position updates; token issuance for checkout admission |
+| **Order Service** | Purchase flow, payment orchestration, order state machine, fee transparency enforcement |
+| **Resale Service** | Peer-to-peer listings, regional price cap enforcement via Pricing Rules Engine, atomic ownership transfer |
+| **Notification Service** | Email/SMS via SendGrid/Twilio; transactional + marketing (with consent check) |
+| **Search Service** | Full-text + faceted event discovery via Elasticsearch; fed by Kafka CDC pipeline |
+| **KYC Service** | Seller identity verification via Stripe Identity; payout threshold enforcement |
+| **Tax Service** | Jurisdiction-aware tax calculation via Avalara/TaxJar; 1099-K and VAT reporting |
+| **Audit Log Service** | Immutable append-only log of all transactions, price changes, ticket transfers, scan events |
+| **Data Privacy Service** | User data export (GDPR portability), anonymization on deletion, retention policy enforcement |
+
+---
+
+### 4. Database Layer
+
+| Store | Technology | Purpose |
+|---|---|---|
+| Primary DB | PostgreSQL (sharded by event_id for inventory; read replicas for buyer queries) | Orders, users, tickets, events |
+| Financial Ledger | PostgreSQL (append-only, double-entry) | Seller earnings, platform fees, refunds |
+| Cache / Locks | Redis | Seat hold TTLs, waiting room queues, sessions, rate limiting |
+| Search Index | Elasticsearch | Event discovery, faceted filtering |
+| Object Storage | S3 / MinIO | QR codes, event images |
+| Event Stream | Kafka | Service decoupling, CDC pipeline, audit events |
+
+**Data Residency:** Separate PostgreSQL deployments per region (EU, US) with API Gateway routing enforcing residency rules per user jurisdiction.
+
+---
+
+### 5. Auth & Security
+
+- **Authentication:** OAuth 2.0 / OIDC (Auth0 or self-hosted Keycloak); MFA (TOTP / passkey) required for accounts with stored payment methods
+- **Authorization:** RBAC — buyer, seller, organizer, admin
+- **Device Fingerprinting:** FingerprintJS Pro — detect headless browsers, link sessions to device
+- **Breached Password Detection:** HaveIBeenPwned API at registration/login
+- **Anomalous Login Detection:** New device/location triggers step-up authentication
+- **Session Binding:** JWT sessions tied to device fingerprint; invalidated on mismatch
+- **Ticket Integrity:** JWT-signed QR codes — single-use, server-validated at scan, atomically invalidated on resale transfer
+- **Payment Security:** Stripe (PCI-DSS SAQ-A); Stripe Radar ML fraud scoring; 3DS enforcement on high-value orders; velocity checks
+- **Edge Security:** Cloudflare WAF + DDoS protection; authenticated-only seat reservation endpoints
+
+---
+
+### 6. CDN & Caching
+
+- **CDN:** Cloudflare or Fastly — static assets + ISR event pages at edge; target 95%+ cache hit ratio
+- **API Cache:** Redis for read-heavy endpoints (event listings, venue seat maps)
+- **Seat Hold TTL:** Redis 10-minute TTL; auto-release on abandonment
+- **ISR Invalidation:** Triggered on inventory threshold changes (e.g., "only 10 left")
+
+---
+
+### 7. Payment, Resale & Payouts
+
+- **Payment Processor:** Stripe — PCI-DSS compliant; no raw card data stored
+- **Fraud Scoring:** Stripe Radar with custom rules (velocity, geography, order value)
+- **Resale Payouts:** Stripe Connect — seller onboarding, KYC above thresholds, escrow until post-event, chargeback protection (72hr hold)
+- **Tax Compliance:** Avalara/TaxJar for real-time tax calculation; annual 1099-K generation; EU VAT handling
+- **Fee Transparency:** Full breakdown (ticket + service fee + delivery fee) shown before payment confirmation — enforced in Order Service and frontend
+
+---
+
+### 8. Regulatory Compliance
+
+| Regulation | Implementation |
+|---|---|
+| GDPR / UK GDPR / CCPA | CMP (OneTrust/Cookiebot), data export API, soft-delete + anonymization, data residency routing, 72hr breach notification runbook, DPA agreements with all processors |
+| Ticketing consumer laws | Pricing Rules Engine in Resale Service (per-region resale caps), all-in pricing enforcement, configurable refund policies with regulatory floor |
+| KYC / AML | Stripe Identity for seller verification above payout thresholds; blocked payouts until verified |
+| PCI-DSS | Stripe SAQ-A; annual self-assessment + third-party pen test |
+| Tax (US/EU) | Avalara/TaxJar at checkout; 1099-K batch jobs; VAT invoicing |
+| WCAG 2.1 AA | axe-core in CI, accessible seat map fallback, alt text required on upload |
+
+---
+
+### 9. CI/CD & Infrastructure
+
+- **Containerization:** Docker + Kubernetes (prod); Docker Compose (dev)
+- **Auto-scaling:** Kubernetes HPA on CPU/memory + custom queue-depth metrics per service
+- **CI/CD:** GitHub Actions — lint → test → accessibility audit (axe-core) → security scan (Snyk) → build → deploy
+- **Infrastructure-as-Code:** Terraform (cloud-agnostic; deployable on AWS, GCP, or Azure)
+- **Observability:** Prometheus + Grafana (metrics), OpenTelemetry (distributed tracing), Sentry (errors), Loki/ELK (logs)
+- **Alerting:** PagerDuty — triggers on: >5% checkout failure rate, anomalous purchase velocity, chargeback rate spike, DDoS threshold breach
+
+---
+
+## End-to-End Data Flows
+
+### Flash Sale Ticket Purchase
+```
+100k Users → Cloudflare WAF + DDoS Protection
+                  ↓
+             API Gateway (rate limiting, fingerprint check)
+                  ↓
+             Waiting Room Service (Redis queue, WebSocket position)
+                  ↓ (token issued, batch admitted)
+             Checkout → Inventory Service (Redis seat lock, 10-min TTL)
+                  ↓
+             Order Service (fee transparency, tax calculation)
+                  ↓
+             Stripe (Radar fraud score, 3DS if needed)
+                  ↓
+             Order Confirmed → Signed QR Code generated
+                  ↓
+             Kafka event → Notification Service + Audit Log + Analytics
+```
+
+### Resale Ticket Transfer
+```
+Seller lists ticket → Resale Service (price cap check via Pricing Rules Engine)
+                  ↓
+Buyer purchases → Order Service → Stripe Connect (escrow)
+                  ↓
+Atomic DB transfer: old QR invalidated → new signed QR issued to buyer
+                  ↓
+Notification Service → seller + buyer confirmation
+                  ↓
+Post-event: payout released from escrow → Stripe Connect → seller bank
+```
+
+### GDPR Erasure Request
+```
+User requests deletion → Data Privacy Service
+                  ↓
+Soft-delete PII fields → anonymize records (preserve financial audit trail)
+                  ↓
+Revoke active sessions → invalidate tickets (if any)
+                  ↓
+Cascade deletion to: Auth0, SendGrid suppression list, search index
+                  ↓
+Confirmation email sent; request logged in Audit Log
+```
+
+---
+
+## Key Design Principles
+
+| Principle | Implementation |
+|---|---|
+| Cloud-agnostic | Docker + Kubernetes + Terraform — portable across AWS/GCP/Azure |
+| Incremental complexity | Modular monolith → microservices decomposition driven by actual load |
+| Security by default | Zero raw card data, signed single-use QR codes, MFA, device binding |
+| Compliance built-in | Not bolted on — residency routing, consent, pricing rules baked into services |
+| Observability first | Distributed tracing from day one; alert on business metrics not just infra |
+| Resilience | Idempotent payments, Redis TTL auto-release, dead-letter queues, graceful degradation |
+
+---
+
+## Governance Recommendations
+- Appoint a Data Protection Officer (DPO) before EU launch
+- Conduct annual PCI-DSS self-assessment and third-party penetration test
+- Maintain a Record of Processing Activities (ROPA)
+- Establish a regulatory change monitoring process — ticketing laws evolve frequently
+- Run a verified fan pre-registration program for high-demand events to reduce bot pressure

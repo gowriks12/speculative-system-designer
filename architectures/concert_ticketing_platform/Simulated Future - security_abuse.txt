@@ -1,0 +1,72 @@
+Generated: 2026-02-25 01:12 UTC
+============================================================
+
+# Concert Ticketing Platform — Simulated Future: Security & Abuse
+
+## Scenario Overview
+As the platform grows, it becomes a high-value target for scalper bots, account takeovers, fraudulent resales, and payment abuse. Security gaps that were acceptable at small scale become critical vulnerabilities.
+
+---
+
+## Abuse Vectors & Mitigations
+
+### 1. Scalper Bots (Inventory Sniping)
+- **Problem:** Automated bots purchase large ticket blocks within milliseconds of on-sale, reselling at inflated prices
+- **Mitigations:**
+  - **Device fingerprinting** (FingerprintJS Pro) at checkout to detect headless browsers
+  - **Behavioral analytics** — flag accounts with anomalous purchase velocity
+  - **Purchase limits** enforced at Order Service level (per account, per payment method, per IP)
+  - **Proof-of-work challenges** for checkout (invisible to humans, expensive for bots)
+  - **Verified fan programs** — pre-registration + lottery system for high-demand events
+
+### 2. Account Takeover (ATO)
+- **Problem:** Credential stuffing attacks compromise buyer accounts to steal tickets or payment methods
+- **Mitigations:**
+  - Enforce **MFA** (TOTP or passkey) for accounts with stored payment methods
+  - **Breached password detection** at registration/login (HaveIBeenPwned API integration)
+  - **Anomalous login alerts** — new device/location triggers re-authentication
+  - **Session binding** — tie JWT sessions to device fingerprint; invalidate on mismatch
+
+### 3. Fraudulent Resale & Duplicate Tickets
+- **Problem:** Sellers screenshot or clone QR codes and sell the same ticket multiple times
+- **Mitigations:**
+  - QR codes are **single-use and server-validated** at scan — first scan wins, rest rejected
+  - Ticket ownership is a DB record — resale transfers atomically invalidate the old QR
+  - **Seller KYC** via Stripe Identity for accounts above payout thresholds
+  - **Chargeback protection** — hold seller funds for 72 hours post-event before release
+
+### 4. Payment Fraud
+- **Problem:** Stolen credit cards used to purchase tickets; chargebacks claw back revenue
+- **Mitigations:**
+  - **Stripe Radar** (ML-based fraud scoring) with custom rules (e.g., block high-risk countries for resale)
+  - **Velocity checks** — flag multiple purchases from same card/IP in short window
+  - **3D Secure** enforcement for high-value orders
+  - **Dispute management** — store proof of delivery (QR scan logs) for chargeback responses
+
+### 5. API Abuse & DDoS
+- **Problem:** Inventory and search endpoints scraped heavily; DDoS on checkout during on-sales
+- **Mitigations:**
+  - **API Gateway** with per-user and per-IP rate limiting (token bucket algorithm)
+  - **Cloudflare WAF + DDoS protection** at edge
+  - **Authenticated endpoints only** for inventory reservation — no anonymous seat holds
+  - **Shadow banning** for abusive accounts — silently throttle without alerting attacker
+
+---
+
+## Security Architecture Additions
+
+| Component | Addition | Purpose |
+|---|---|---|
+| FingerprintJS Pro | Device fingerprinting | Bot & ATO detection |
+| Stripe Radar | ML fraud scoring | Payment fraud prevention |
+| Stripe Identity | Seller KYC | Fraudulent resale prevention |
+| Cloudflare WAF | Edge firewall | DDoS + scraping protection |
+| Audit Log Service | Immutable event log | Forensics, dispute resolution |
+| SIEM | Log aggregation + alerting | Real-time threat detection |
+
+---
+
+## Incident Response Plan
+- Automated alerts for: >5% checkout failure rate, anomalous purchase velocity, spike in chargeback rate
+- On-call runbook: bot attack → tighten CAPTCHA threshold + enable waiting room → investigate fingerprint clusters
+- Post-incident: ticket invalidation and reissue capability for compromised accounts

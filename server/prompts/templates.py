@@ -1,10 +1,10 @@
-from resources.roots import load_roots, format_roots_for_prompt
-from resources.futures import *
+from server.resources.roots import load_roots, format_roots_for_prompt
+from server.resources.futures import *
 
 FUTURES = load_futures()
 ROOTS = load_roots()
 
-def generate_initial_architecture(system_description):
+def initial_architecture_prompt(system_description):
     return f"""You are a senior systems architect.
 
     Generate an **Initial Architecture** for the system below. It must satisfy every root constraint.
@@ -20,7 +20,7 @@ def generate_initial_architecture(system_description):
 
 
 
-def simulating_future(future_name, architecture):
+def simulating_future(future_id, architecture):
     return f"""You are a systems architect running a speculative simulation.
 
     Stress-test the architecture against the future scenario. Identify what holds, degrades, and breaks.
@@ -28,17 +28,17 @@ def simulating_future(future_name, architecture):
     ## Architecture
     {architecture}
 
-    ## Future: {future_name}
-    {future_prompt(FUTURES[future_name])}
+    # ## Future: {future_id}
+    # {future_prompt(FUTURES.get(future_id))}
 
-    ## Root Constraints (must never be violated)
-    {format_roots_for_prompt(ROOTS)}
+    # ## Root Constraints (must never be violated)
+    # {format_roots_for_prompt(ROOTS)}
 
-    Produce a Markdown report titled "Simulation: {future_name}" covering: what Holds, Degrades, Breaks, any Root Constraint Violations, and Adaptation Suggestions."""
+    # Produce a Markdown report titled "Simulation: {future_id}" covering: what Holds, Degrades, Breaks, any Root Constraint Violations, and Adaptation Suggestions."""
 
 
 
-def identify_tradeoff(architecture, simulated_results):
+def pickup_issues(architecture, simulated_results):
     return f"""You are a senior systems architect doing cross-future analysis.
 
     ## Original Architecture
@@ -51,3 +51,22 @@ def identify_tradeoff(architecture, simulated_results):
     {format_roots_for_prompt(ROOTS)}
 
     Produce a Markdown report titled "Tradeoffs & Issues" covering: Recurring Failures, Architectural Tensions, Constraint Fragility, Opportunity Areas, and Top Priority Issues to fix."""
+
+
+def final_architecture_prompt(system_description, initial_architecture, tradeoffs_and_issues):
+    f"""You are a senior systems architect producing a final battle-tested design.
+
+    ## System
+    {system_description}
+
+    ## Initial Architecture
+    {initial_architecture}
+
+    ## Tradeoffs & Issues to Address
+    {tradeoffs_and_issues}
+
+    ## Root Constraints
+    {format_roots_for_prompt(ROOTS)}
+
+    Produce a comprehensive Markdown document titled "Final Architecture" with: what changed and why, updated Components, Resilience Mechanisms per future, and Remaining Risks."""
+

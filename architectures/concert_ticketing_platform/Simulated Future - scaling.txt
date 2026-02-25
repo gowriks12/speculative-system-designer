@@ -1,0 +1,72 @@
+Generated: 2026-02-25 01:12 UTC
+============================================================
+
+# Concert Ticketing Platform — Simulated Future: Scaling
+
+## Scenario Overview
+The platform experiences rapid user growth — major artists onboard, ticket volumes grow 10x, and flash sales regularly attract 100k+ concurrent users. The modular monolith begins showing strain under load.
+
+---
+
+## Scaling Challenges Identified
+
+### 1. Checkout Bottleneck (Flash Sales)
+- **Problem:** Inventory Service overwhelmed during simultaneous ticket releases; Redis lock contention spikes
+- **Solution:** Introduce a **Virtual Waiting Room** service — users enter a queue, are issued a time-limited token, and are admitted to checkout in controlled batches
+- **Tech:** Redis Sorted Sets for queue management + WebSocket push to notify users of position
+
+### 2. Database Write Contention
+- **Problem:** PostgreSQL write throughput hits ceiling during high-demand on-sales
+- **Solution:**
+  - Shard ticket inventory tables by event_id
+  - Move time-series order data to an append-optimized store (TimescaleDB or partitioned Postgres)
+  - Introduce read replicas for buyer-facing queries
+
+### 3. Service Decomposition
+- **Problem:** Modular monolith deployment becomes a bottleneck — a spike in Order Service causes full app restarts
+- **Solution:** Extract highest-load modules into independent microservices:
+  - Inventory Service → standalone, auto-scaled
+  - Order Service → standalone with its own DB
+  - Search Service → dedicated Elasticsearch cluster
+- **Orchestration:** Kubernetes HPA (Horizontal Pod Autoscaler) on CPU/memory + custom queue-depth metrics
+
+### 4. Search & Discovery at Scale
+- **Problem:** Elasticsearch struggles with write-heavy indexing during mass event creation
+- **Solution:** Decouple indexing via an event-driven pipeline — PostgreSQL → Debezium CDC → Kafka → Elasticsearch
+
+### 5. CDN & Static Asset Delivery
+- **Problem:** Event pages with seat maps are slow globally
+- **Solution:** Pre-render event pages at build time (Next.js ISR — Incremental Static Regeneration), push to CDN edge nodes; invalidate on inventory changes
+
+---
+
+## Updated Architecture Additions
+
+| Component | Addition | Purpose |
+|---|---|---|
+| Virtual Waiting Room | Redis queue + WebSocket | Throttle checkout demand |
+| Kafka | Event streaming backbone | Decouple services, CDC pipeline |
+| Kubernetes HPA | Auto-scaling policies | Handle burst traffic |
+| Read Replicas | PostgreSQL replicas | Offload read traffic |
+| Debezium CDC | Change data capture | Real-time search index sync |
+
+---
+
+## Scaling Data Flow (Flash Sale)
+
+```
+100k Users → Waiting Room Queue (Redis)
+                  ↓ (batch admission, token issued)
+             Checkout Flow → Inventory Service (sharded)
+                  ↓
+             Order Service → PostgreSQL (write shard)
+                  ↓
+             Kafka event → Notification + Analytics consumers
+```
+
+---
+
+## Cost Considerations
+- Kubernetes node pools should use spot/preemptible instances for stateless services
+- Reserve capacity for PostgreSQL and Redis (stateful)
+- Use CDN aggressively to reduce origin hits — target 95%+ cache hit ratio on event pages

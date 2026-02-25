@@ -15,8 +15,9 @@ def format_roots_for_prompt(roots):
         formatted += f"""
     ROOT: {root['id']}
     Requirement: {root['statement']}
-    Rationale: {root['rationale']}
-    Avoid:
-    - {chr(10).join(root['violation_examples'])}
     """
     return formatted
+
+# Rationale: {root['rationale']}
+#     Avoid:
+#     - {chr(10).join(root['violation_examples'])}

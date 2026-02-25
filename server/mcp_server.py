@@ -1,338 +1,108 @@
-from mcp.server.fastmcp import FastMCP
-
-# import your existing logic
-from server.resources.critiques import *
-from server.resources.futures import *
-from server.tools.submit_architecture import submit_architecture
-# from server.tools.simulate_future import simulate_future
-from server.tools.declare_tradeoff import declare_tradeoff
-from server.resources.roots import load_roots, format_roots_for_prompt
-# from server.tools.evaluate_architecture import evaluate_architecture
-from mcp.server.fastmcp import Context
-from mcp.types import SamplingMessage, TextContent
-from pydantic import BaseModel, Field
-from typing import Literal
 import json
 from pathlib import Path
-from server.state.store import REVIEW_STORE
-mcp = FastMCP("SpeculativeSystemDesigner")
+from datetime import datetime
+from mcp.server.fastmcp import FastMCP
 
-ROOT_PATH = Path(__file__).parent.parent
+from server.resources.roots import *
+from server.resources.futures import *
+from server.prompts.templates import *
+mcp = FastMCP("speculative-system-designer")
+
+# ── Storage ────────────────────────────────────────────────────────────────────
+
+DATA_DIR = Path(__file__).parent.parent / "data"
+
+OUTPUT_DIR = Path(__file__).parent.parent / "architectures"  # pre-defined output location
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+FUTURES_FILE = DATA_DIR / "futures.json"
+ROOTS_FILE   = DATA_DIR / "roots.json"
 
 FUTURES = load_futures()
+ROOTS = load_roots()
 
-# class TradeoffSelection(BaseModel):
-#     selected_option: Literal["A", "B", "C"] = Field(
-#         description="Select which tradeoff option you accept"
-#     )
+def _save(path, data):
+    path.write_text(json.dumps(data, indent=2))
 
-class TradeoffSelection(BaseModel):
-    selected_option: str = Field(
-        description="Enter the ID of the tradeoff option you accept (e.g., A, B, C)"
-    )
 
-# ---------- RESOURCES ----------
-@mcp.resource("roots://governance")
-def roots_resource():
-    return load_roots()
+# ── Resources ──────────────────────────────────────────────────────────────────
 
-@mcp.resource("roots://futures")
-def futures_resource():
+@mcp.resource("design://futures")
+def get_futures() -> str:
+    """All registered speculative future scenarios."""
     return load_futures()
 
 
-# ---------- TOOLS ----------
-@mcp.tool()
-async def generate_architecture_tool(ctx: Context, problem_statement: str):
-    
-    roots = load_roots()
-    formatted_roots = format_roots_for_prompt(roots)
+@mcp.resource("design://roots")
+def get_roots() -> str:
+    """All registered root constraints the architecture must satisfy."""
+    return load_roots()
 
-    result = await ctx.session.create_message(
-        messages=[
-            SamplingMessage(
-                role="user",
-                content=TextContent(
-                    type="text",
-                    text=(
-                        "You are a senior system architect.\n\n"
-                        "Design an architecture for the following problem.\n\n"
-                        f"Problem:\n{problem_statement}\n\n"
-                        "You MUST comply with the following constitutional root constraints:\n\n"
-                        f"{formatted_roots}\n\n"
-                        "For each root constraint, briefly explain how your design satisfies it.\n\n"
-                        "Then provide the final architecture description in 5 to 8 sentences."
-                    )
-                ),
-            )
-        ],
-        max_tokens=800,
-    )
-    architecture_text = result.content.text
-    architecture = submit_architecture(architecture_text)
 
-    return {
-        "status": "architecture_generated",
-        "architecture_id": architecture["architecture_id"],
-        "architecture_text":architecture_text
-    }
+# ── Prompts ────────────────────────────────────────────────────────────────────
 
+@mcp.prompt()
+def generate_initial_architecture(system_description: str) -> str:
+    """Generate an initial architecture that satisfies all root constraints."""
+    return initial_architecture_prompt(system_description)
+
+@mcp.prompt()
+def simulate_future(future_name: str, architecture: str) -> str:
+    """Stress-test an architecture against a specific registered future scenario."""
+    return simulating_future(future_name, architecture)
+
+@mcp.prompt()
+def identify_tradeoffs(architecture: str, simulation_results: str) -> str:
+    """Analyse simulation results to surface tradeoffs and failure modes."""
+    return pickup_issues(architecture, simulation_results)
+
+@mcp.prompt()
+def generate_final_architecture(system_description: str, initial_architecture: str, tradeoffs_and_issues: str) -> str:
+    """Generate the final resilient architecture incorporating all simulation learnings."""
+    return final_architecture_prompt(system_description,initial_architecture, tradeoffs_and_issues)
+
+
+# ── Tools ──────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
-async def propose_tradeoff_tool(ctx: Context, architecture_id: str, critique_id: str, critique_summary: str):
+def list_roots_scope():
+    """List the future scopes available to simulate"""
+    return list(ROOTS.keys())
 
-    # Step 1: Generate structured tradeoff options
-    result = await ctx.session.create_message(
-        messages=[
-            SamplingMessage(
-                role="user",
-                content=TextContent(
-                    type="text",
-                    text=(
-                        "You are an experienced system architect.\n"
-                        "Given the critique below, propose EXACTLY THREE distinct tradeoff options.\n"
-                        "Respond ONLY in JSON format:\n\n"
-                        "{\n"
-                        '  "options": [\n'
-                        '    {"id": "A", "statement": "...", "sacrifice": "...", "benefit": "..."},\n'
-                        '    {"id": "B", ...},\n'
-                        '    {"id": "C", ...}\n'
-                        "  ]\n"
-                        "}\n\n"
-                        f"Critique:\n{critique_summary}"
-                    )
-                ),
-            )
-        ],
-        max_tokens=400,
-    )
-    raw_text = result.content.text
-    
-    if raw_text.startswith("```"):
-        raw_text = raw_text.split("```json")[1].strip("```")
-    print(raw_text)
-
-    parsed = json.loads(raw_text)
-    options = parsed["options"]
-    print("OPTIONSSSSS",options)
-    print("SCHEMAAAAA",TradeoffSelection.model_json_schema())
-    options_text = "\n\n".join(
-        f"{o['id']}:\n"
-        f"  Statement: {o['statement']}\n"
-        f"  Sacrifice: {o['sacrifice']}\n"
-        f"  Benefit: {o['benefit']}\n"
-        for o in options
-        )
-
-    # Step 2: Ask host to choose
-    elicitation = await ctx.elicit(
-        message=f"Select which tradeoff you are willing to accept.\n {options_text}",
-        schema=TradeoffSelection,
-    )
-
-    if elicitation.action != "accept" or not elicitation.data:
-        return {"status": "cancelled"}
-    
-    selected_id = elicitation.data.selected_option.strip().upper()
-    print("SELECTEDDDDD",selected_id)
-    valid_ids = {o["id"] for o in options}
-
-    if selected_id not in valid_ids:
-        return {
-            "status": "error",
-            "message": f"Invalid selection. Must be one of {valid_ids}"
-        }
-
-    selected_option = next(o for o in options if o["id"] == selected_id)
-
-    # selected_id = elicitation.data.selected_option
-    # selected_option = next(o for o in options if o["id"] == selected_id)
-
-    # Step 3: Record tradeoff
-    declare_tradeoff(architecture_id, critique_id, selected_option["statement"])
-
-    return {
-        "status": "tradeoff_declared",
-        "selected": selected_option
-    }
-
-
-# @mcp.tool()
-# def require_sacrifice_tool():
-#     unresolved = unresolved_critiques()
-
-#     if not unresolved:
-#         return {"status": "ok", "message": "All futures satisfied"}
-
-#     return {
-#         "status": "blocked",
-#         "message": "Unresolved futures detected",
-#         "futures": [
-#             {"critique_id": c.id, "future": c.future, "summary": c.summary}
-#             for c in unresolved
-#         ]
-#     }
+@mcp.tool()
+def list_futures_scope():
+    """List the future scopes available to simulate"""
+    return list(FUTURES.keys())
 
 
 @mcp.tool()
-def submit_architecture_tool(description: str):
-    return submit_architecture(description)
+def write_architecture(use_case: str, doc_type: str, content: str, future_name: str = "") -> str:
+    """Write an architecture document to the architectures/<use_case>/ folder.
 
-@mcp.tool()
-async def simulate_future_tool(ctx: Context,
-                               architecture_id: str,
-                               future_id: str):
+    doc_type must be one of: 'initial', 'simulated_future', 'final'.
+    For 'simulated_future', also provide future_name.
+    """
+    safe = lambda s: "".join(c if c.isalnum() or c in " -_" else "_" for c in s).strip()
 
-    review = REVIEW_STORE.get(architecture_id)
-    # print(review)
-    if not review:
-        return {"status": "error", "reason": "Unknown architecture"}
+    folder = OUTPUT_DIR / safe(use_case)
+    folder.mkdir(parents=True, exist_ok=True)
 
-    architecture_text = review["initial_architecture"]
+    match doc_type:
+        case "initial":
+            filename = "Initial Architecture.txt"
+        case "simulated_future":
+            filename = f"Simulated Future - {safe(future_name)}.txt"
+        case "final":
+            filename = "Final Architecture.txt"
+        case _:
+            return f"Unknown doc_type '{doc_type}'. Use: initial, simulated_future, or final."
 
-    future = FUTURES[future_id]
-    review_prompt = future["review_prompt"]
-
-    # --------------------------
-    # MCP SAMPLING HERE
-    # --------------------------
-    result = await ctx.session.create_message(
-        messages=[
-            SamplingMessage(
-                role="user",
-                content=TextContent(type="text", text=review_prompt),
-            ),
-            SamplingMessage(
-                role="user",
-                content=TextContent(type="text", text=architecture_text),
-            ),
-        ],
-        max_tokens=400,
-    )
-
-    raw_text = result.content.text
-    # print(raw_text)
-
-    if raw_text.startswith("```"):
-        raw_text = raw_text.split("```json")[1].strip("```")
-
-    parsed = json.loads(raw_text)
-    # print(parsed)
-
-    critique = Critique(
-        id=str(uuid4()),
-        future=future_id,
-        summary=parsed["summary"],
-        risks=parsed["risks"],
-        required_tradeoff="Unresolved",
-    )
-
-    save_critique(critique)
-
-    review["critiques"].append(critique.id)
-    critique_summary = critique.model_dump()
-
-    return {
-        "status": "critique_generated",
-        "critique": critique_summary,
-    }
+    header = f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n{'='*60}\n\n"
+    (folder / filename).write_text(header + content, encoding="utf-8")
+    return f"Saved to: {folder / filename}"
 
 
-@mcp.tool()
-async def evaluate_architecture_tool(ctx: Context,
-                                     architecture_id: str):
-    # Step 1: Simulate futures and identify critiques
-    print("\n--- EVALUATING FUTURES ---")
-    critiques = []
-    for future_id in FUTURES.keys():
-        # print(future_id)
-        result = await simulate_future_tool(
-            ctx,
-            architecture_id=architecture_id,
-            future_id=future_id,
-        )
-        critiques.append(result["critique"])
-    
-    # Step 2: For each Critique, propose tradeoff and declare it
-    for critique in critiques:
-        critique_id = critique["id"]
-        critique_summary = critique["summary"]
-
-        resolution = await propose_tradeoff_tool(
-            ctx,
-            architecture_id,
-            critique_id, 
-            critique_summary)
-        
-    # Step 3: Using the critiques and tradeoffs selected, generate final architecture
-    final_architecture = await finalize_architecture_tool(
-            ctx,
-            architecture_id
-        )
-
-
-    return {
-        "status": "evaluation_complete",
-        "final_architecture": final_architecture,
-    }
-
-
-# @mcp.tool()
-# def declare_tradeoff_tool(architecture_id: str, critique_id: str, tradeoff: str):
-#     return declare_tradeoff(architecture_id, critique_id, tradeoff)
-
-
-
-@mcp.tool()
-async def finalize_architecture_tool(ctx: Context, architecture_id: str):
-
-    review = REVIEW_STORE.get(architecture_id)
-    if not review:
-        return {"status": "error", "reason": "Unknown architecture"}
-
-    initial_arch = review["initial_architecture"]
-    tradeoffs = review["tradeoffs"]
-
-    if not tradeoffs:
-        return {
-            "status": "error",
-            "reason": "No tradeoffs declared"
-        }
-
-    tradeoff_text = "\n".join(
-        [f"- {t['statement']}" for t in tradeoffs]
-    )
-
-    result = await ctx.session.create_message(
-        messages=[
-            SamplingMessage(
-                role="user",
-                content=TextContent(
-                    type="text",
-                    text=(
-                        "You previously proposed this architecture:\n\n"
-                        f"{initial_arch}\n\n"
-                        "The following tradeoffs have been explicitly accepted:\n\n"
-                        f"{tradeoff_text}\n\n"
-                        "Produce a final architecture that clearly and concretely reflects these tradeoffs.\n"
-                        "Be technical and specific. Keep the complete architecture conscise within 10 sentences."
-                    )
-                ),
-            )
-        ],
-        max_tokens=600,
-    )
-
-    final_arch = result.content.text
-    review["final_architecture"] = final_arch
-
-    return {
-        "status": "finalized",
-        "final_architecture": final_arch
-    }
-
+# ── Run ────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # mcp.run(transport="streamable-http")
     mcp.run(transport="stdio")
-

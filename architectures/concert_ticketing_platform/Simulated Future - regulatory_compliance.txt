@@ -1,0 +1,87 @@
+Generated: 2026-02-25 01:12 UTC
+============================================================
+
+# Concert Ticketing Platform — Simulated Future: Regulatory Compliance
+
+## Scenario Overview
+As the platform expands to new markets (EU, UK, potentially global), it encounters a web of regulatory requirements: data privacy laws, consumer protection rules for ticketing, financial regulations for resale payouts, and accessibility mandates. Non-compliance risks fines, market bans, and reputational damage.
+
+---
+
+## Regulatory Domains & Architecture Impact
+
+### 1. Data Privacy — GDPR (EU) / UK GDPR / CCPA (California)
+
+**Requirements:**
+- Lawful basis for processing personal data
+- Right to erasure ("right to be forgotten")
+- Data portability (export user data on request)
+- Consent management for marketing communications
+- Data breach notification within 72 hours (GDPR)
+
+**Architecture Changes:**
+- **Consent Management Platform (CMP):** Integrate OneTrust or Cookiebot for cookie consent + marketing opt-ins
+- **Data Retention Policies:** Automated purge jobs — delete inactive user PII after retention window (e.g., 3 years post last transaction)
+- **Soft Delete + Anonymization:** User deletion anonymizes records rather than hard-deleting (preserves financial audit trail)
+- **Data Export API:** Self-service endpoint allowing users to download all their data (JSON/CSV)
+- **Data Residency:** PostgreSQL deployments in EU region for EU users; US region for US users — enforced at API Gateway routing layer
+- **DPA Agreements:** Ensure all third-party processors (Stripe, SendGrid, Auth0) have signed Data Processing Agreements
+
+### 2. Ticketing Consumer Protection Laws
+
+**Requirements (varies by region):**
+- UK: **Digital Markets, Competition and Consumers Act** — resale price caps (face value + fees) for certain venues
+- EU: Some member states restrict resale markups
+- US: State-level anti-scalping laws (e.g., New York, New Jersey)
+- General: Transparent fee disclosure before checkout ("all-in pricing")
+
+**Architecture Changes:**
+- **Pricing Rules Engine:** Configurable per-event, per-region resale price cap enforcement in Resale Service
+- **Fee Transparency Layer:** Checkout UI must display full breakdown (ticket price + service fee + delivery fee) before payment confirmation — enforce in frontend Order Summary component
+- **Refund Policy Engine:** Support event-cancellation auto-refunds per regional requirements; configurable per organizer with regulatory floor
+- **Audit Trail:** Immutable log of all price changes and transaction terms for regulatory inspection
+
+### 3. Financial Regulations — Payments & Payouts
+
+**Requirements:**
+- **PCI-DSS:** Already handled via Stripe; maintain SAQ-A compliance
+- **KYC/AML:** Sellers receiving above threshold payouts (e.g., €1,000/year in EU) require identity verification under anti-money laundering rules
+- **Tax Reporting:** US sellers above IRS thresholds require 1099-K generation; EU sellers may require VAT handling
+
+**Architecture Changes:**
+- **KYC Service:** Stripe Identity integration for seller verification; block payouts until verified above threshold
+- **Tax Calculation Service:** Integrate Avalara or TaxJar for jurisdiction-aware tax calculation at checkout
+- **1099-K / VAT Reporting:** Annual batch job generating tax reports from Order Service data; export to accounting systems
+- **Payout Ledger:** Immutable double-entry ledger for all financial movements (seller earnings, platform fees, refunds)
+
+### 4. Accessibility — WCAG 2.1 AA
+
+**Requirements:**
+- Web Content Accessibility Guidelines compliance for public-facing pages
+- Keyboard navigability, screen reader support, sufficient color contrast
+
+**Architecture Changes:**
+- **Frontend audit:** Automated accessibility testing in CI pipeline (axe-core / Lighthouse CI)
+- **Seat Map Accessibility:** Text-based seat selection fallback for screen readers alongside visual seat map
+- **Alt text pipeline:** Require alt text for all event images uploaded by organizers (enforced at upload)
+
+---
+
+## Compliance Architecture Summary
+
+| Regulation | Key Addition | Owner |
+|---|---|---|
+| GDPR/CCPA | CMP, data export API, anonymization, regional data residency | Engineering + Legal |
+| Ticketing laws | Pricing rules engine, fee transparency, refund engine | Product + Engineering |
+| KYC/AML | Stripe Identity, payout threshold checks | Finance + Engineering |
+| Tax reporting | Avalara/TaxJar, 1099-K batch jobs, VAT handling | Finance |
+| PCI-DSS | Maintained via Stripe SAQ-A; annual review | Security |
+| WCAG 2.1 AA | axe-core in CI, seat map fallback | Frontend Engineering |
+
+---
+
+## Recommended Governance Actions
+- Appoint a Data Protection Officer (DPO) before EU launch
+- Conduct annual PCI-DSS self-assessment and third-party penetration test
+- Maintain a Record of Processing Activities (ROPA) document
+- Build a regulatory change monitoring process — ticketing laws evolve frequently
