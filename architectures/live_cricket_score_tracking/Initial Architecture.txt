@@ -1,0 +1,32 @@
+Generated: 2026-02-25 03:56 UTC
+============================================================
+
+# Initial Architecture: Live Cricket Score Tracking Website
+
+## Overview
+A lightweight, event-driven web platform that ingests live cricket data from a third-party scores API, caches and fans it out to clients via WebSockets, and serves a React frontend — all deployable by a small team on managed cloud infrastructure.
+
+## Components
+- **Data Ingestion Service** (Node.js): Polls or subscribes to a cricket data provider (e.g., CricAPI, Sportradar) and publishes score events to a message bus.
+- **Message Bus** (Redis Pub/Sub or managed AWS SQS/SNS): Decouples ingestion from delivery; swap-able without touching other layers.
+- **Score Fan-out Service** (Node.js + Socket.IO): Consumes events and pushes live updates to connected browser clients over WebSockets.
+- **REST API** (Node.js/Express): Serves historical scores, match metadata, and team info from a PostgreSQL database.
+- **Frontend** (React SPA on CDN): Renders live scoreboards, subscribing to the fan-out service for real-time updates.
+- **Managed Infrastructure**: Deployed on Railway, Render, or AWS ECS with RDS Postgres — no self-managed Kubernetes.
+
+## Data Flow
+Third-party API → Ingestion Service → Redis Pub/Sub → Fan-out Service → WebSocket clients; static/historical queries hit the REST API → PostgreSQL.
+
+## Key Design Decisions
+- Managed services only (no Kubernetes) to keep operational burden within a 6-person team.
+- Redis Pub/Sub chosen over Kafka for simplicity; replaceable if scale demands it.
+- Structured JSON logging (Winston/Pino) and OpenTelemetry traces exported to a hosted provider (e.g., Grafana Cloud free tier) provide out-of-the-box observability.
+- PostgreSQL with a clean schema means the data layer can be migrated or replaced independently of other services.
+
+## Root Constraint Satisfaction
+| Constraint | How Met |
+|---|---|
+| `team_constraints` | All components are managed services or simple Node.js processes; no specialist Kubernetes/DevOps knowledge required. |
+| `cost_discipline` | Managed tiers (Railway/Render/RDS) have predictable per-service pricing; Redis is self-hosted on a single small instance or via Upstash free tier. |
+| `operational_observability` | Structured logs + OpenTelemetry traces are on by default; dashboards are pre-built, requiring no ad-hoc production instrumentation. |
+| `reversibility` | Each component (message bus, database, fan-out layer, frontend framework) is behind a thin interface and can be swapped independently without rewriting the system. |

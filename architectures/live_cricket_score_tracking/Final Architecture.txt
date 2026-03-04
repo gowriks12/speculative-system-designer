@@ -1,0 +1,82 @@
+Generated: 2026-02-25 04:00 UTC
+============================================================
+
+# Final Architecture: Live Cricket Score Tracking Website
+
+## Overview
+A hardened, scalable, compliance-aware event-driven platform that addresses all pain points surfaced during future simulation. The architecture replaces Redis Pub/Sub with a persistent message broker, moves to a streaming ingestion model, adds authentication and rate limiting from day one, and bakes in data governance controls — while remaining operable by a team of 6.
+
+## Components
+
+### Ingestion Layer
+- **Ingestion Service** (Node.js): Connects to the data provider via webhook/streaming endpoint (falling back to adaptive polling). Validates and normalises score events before publishing. API credentials stored in a managed secrets service (AWS Secrets Manager or Doppler).
+
+### Message Broker
+- **Upstash Kafka** (managed, serverless): Replaces Redis Pub/Sub. Provides persistent, partitioned, replayable event log. Topics: `match.score.updated`, `match.state.changed`. Retention: 24 hours. Allows fan-out services to replay on crash without data loss.
+
+### Fan-out Layer
+- **Fan-out Service** (Node.js + Socket.IO with Redis Adapter): Consumes Kafka topics and pushes updates to clients over WebSockets. Horizontally scalable via Redis Adapter (Upstash Redis, not Pub/Sub — used only for Socket.IO coordination). Enforces per-IP connection rate limits and max connections per client via middleware.
+
+### API Layer
+- **REST API** (Node.js/Express): Serves historical scores and match metadata from PostgreSQL. JWT-based authentication for all endpoints. Read-through Redis cache for hot match data to protect the database under load. Rate limited via a lightweight API gateway (e.g., Kong or AWS API Gateway).
+
+### Data Layer
+- **PostgreSQL (RDS)**: Primary store for match history, team metadata, and (if introduced) user records. PII columns tagged via column comments; soft-delete pattern for GDPR right-to-erasure. Append-only `audit_log` table for sensitive operations.
+- **Upstash Redis**: Socket.IO adapter coordination + REST API read cache. Not used for Pub/Sub.
+
+### Frontend
+- **React SPA (CDN)**: Subscribes to fan-out service for live updates. Static assets served via CDN with cache-busting on deploy. Geo-fencing headers enforced at CDN edge to restrict score redistribution by region (compliance with broadcast licensing).
+
+### Observability
+- Structured JSON logs (Pino) with **automatic PII scrubbing middleware** (IP anonymisation, token redaction) before export.
+- OpenTelemetry traces + metrics exported to Grafana Cloud.
+- Log retention policy: 30 days, configurable per environment.
+
+### Security & Auth
+- JWT issued at login; short-lived access tokens + refresh token rotation.
+- API Gateway enforces rate limits (per-token and per-IP) upstream of all services.
+- TLS enforced at load balancer; HSTS headers set on all responses.
+- Secrets stored in managed vault, never in environment variables directly.
+
+## Data Flow
+Data Provider (stream/webhook) → Ingestion Service → Upstash Kafka → Fan-out Service → WebSocket clients (rate-limited, authenticated)
+Historical queries → REST API (JWT-authenticated, rate-limited) → Redis cache → PostgreSQL
+
+## Key Design Decisions
+
+**Kafka over Redis Pub/Sub**: Eliminates the message loss and ceiling problems. Upstash Kafka is serverless and cheap at low volume, so it satisfies cost discipline while being production-grade at high volume.
+
+**Redis Adapter instead of Redis Pub/Sub for Socket.IO**: Allows horizontal fan-out scaling without re-introducing Pub/Sub fragility. Separation of concerns is explicit.
+
+**API Gateway at the perimeter**: Centralises rate limiting, auth token validation, and geo-restriction in one replaceable layer rather than scattering logic across services — preserving reversibility.
+
+**PII scrubbing in the logging pipeline**: Addresses GDPR compliance without changing application code; the scrubbing middleware is a thin, swappable layer on the Pino transport.
+
+**Append-only audit log in PostgreSQL**: A single `audit_log` table with insert-only permissions for the application role satisfies audit trail requirements without a separate WORM store.
+
+**Geo-fencing at CDN edge**: Broadcast licensing restrictions (BCCI/Sportradar terms) enforced declaratively at the CDN layer, not scattered through application logic.
+
+## Root Constraint Satisfaction
+
+| Constraint | How Met |
+|---|---|
+| `team_constraints` | All infrastructure is managed/serverless (Upstash Kafka, Upstash Redis, RDS, Grafana Cloud). No Kubernetes. A 6-person team owns the full stack without specialist ops roles. |
+| `cost_discipline` | Upstash pricing is consumption-based; costs are near-zero at low traffic and scale linearly. RDS and Grafana Cloud have predictable tiers. No surprise egress-heavy architectures. |
+| `operational_observability` | Structured logs with PII scrubbing, OTel traces, and Grafana dashboards are on by default. Kafka consumer lag is a first-class metric. No ad-hoc instrumentation needed to diagnose issues. |
+| `reversibility` | Kafka, Redis, the API Gateway, and the auth layer are each behind thin interfaces. Any component can be swapped (e.g., Kafka → AWS MSK, Kong → AWS API Gateway) without rewriting adjacent services. |
+
+## Pain Points Addressed
+
+| Simulated Future | Pain Point | Resolution |
+|---|---|---|
+| Scaling | Redis Pub/Sub ceiling | Replaced with Upstash Kafka (persistent, partitioned, replayable) |
+| Scaling | Stateful WebSocket horizontal scaling | Redis Adapter for Socket.IO coordination |
+| Scaling | Polling latency | Streaming/webhook ingestion as primary model |
+| Scaling | REST API read pressure | Redis read-through cache in front of PostgreSQL |
+| Security | No WebSocket rate limiting | Per-IP connection limits in fan-out middleware |
+| Security | Unauthenticated REST API | JWT auth enforced at API Gateway |
+| Security | Credential exposure | Managed secrets vault (Doppler/AWS Secrets Manager) |
+| Regulatory | PII in logs | Pino transport-level scrubbing middleware |
+| Regulatory | Data redistribution rights | Geo-fencing at CDN edge per licensing regions |
+| Regulatory | No audit trail | Append-only `audit_log` table in PostgreSQL |
+| Regulatory | GDPR right-to-erasure | Soft-delete pattern + PII column tagging in schema |

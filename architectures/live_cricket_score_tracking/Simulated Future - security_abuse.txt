@@ -1,0 +1,24 @@
+Generated: 2026-02-25 03:58 UTC
+============================================================
+
+# Simulated Future: Security & Abuse
+
+## Context
+As the platform grows, it attracts scrapers harvesting live scores for arbitrage, bot-driven traffic inflating WebSocket connection counts, and potential credential stuffing if user accounts are introduced.
+
+## Pain Points Against Initial Architecture
+
+### 1. No Rate Limiting on WebSocket Connections
+The initial design has no throttling at the WebSocket layer. A single abusive client can open thousands of connections, exhausting server file descriptors and degrading service for legitimate users. The fan-out service needs connection-level rate limiting and IP-based throttling — not present initially.
+
+### 2. No API Authentication or Token Model
+The REST API is unauthenticated. Scrapers can freely enumerate match data at high frequency. Introducing API keys or JWT-based auth requires retrofitting the Express layer and adding a token issuance/validation service — a non-trivial addition to a system designed for simplicity.
+
+### 3. Data Provider Credential Exposure Risk
+The ingestion service holds third-party API credentials (CricAPI/Sportradar keys). If these are stored in environment variables without a secrets manager, a compromised deployment environment leaks paid API access. The initial design does not mandate a secrets management strategy.
+
+### 4. WebSocket Message Integrity
+Score updates pushed over WebSockets are unsigned. A compromised fan-out service or a man-in-the-middle on unencrypted connections (non-TLS deployments) could inject fake scores. The initial design assumes TLS at the infra level but does not enforce or document this.
+
+### 5. Abuse of Historical Score Endpoints
+Bulk scraping of the REST API's historical data can be used to build competing products or feed betting platforms. Without response fingerprinting, honeypot endpoints, or legal/ToS enforcement hooks, the initial architecture is fully transparent to scrapers.

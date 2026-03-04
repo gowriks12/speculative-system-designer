@@ -1,0 +1,24 @@
+Generated: 2026-02-25 03:58 UTC
+============================================================
+
+# Simulated Future: Regulatory Compliance
+
+## Context
+The platform expands to serve users in the EU (GDPR), potentially monetizes via subscriptions (PCI-DSS adjacent), and operates in India where cricket data broadcasting rights carry legal sensitivity.
+
+## Pain Points Against Initial Architecture
+
+### 1. No User Data Governance Model
+If user accounts, preferences, or behavioral analytics are added, GDPR requires a data inventory, consent management, and the right to erasure. PostgreSQL holds all persistent data but has no row-level deletion audit trail or PII tagging — retrofitting this is expensive.
+
+### 2. No Data Residency Controls
+The initial architecture deploys to a single region without data residency configuration. EU users' data (even connection logs) may not legally reside outside the EU. The managed infrastructure choices (Railway/Render) may not offer region-pinning at the granularity required.
+
+### 3. Logging May Capture PII
+Structured JSON logging (Winston/Pino) likely captures IP addresses, user agents, and potentially session tokens in request logs. Under GDPR, these are personal data. The initial design has no log scrubbing, retention policies, or anonymization — a compliance liability from day one.
+
+### 4. Cricket Data Licensing and Redistribution Rights
+Live score data from providers like Sportradar is licensed, not owned. Redistributing it via a public WebSocket feed may violate the provider's terms of service or broadcast rights agreements (especially in India under BCCI licensing). The architecture has no content access controls or geo-fencing to restrict redistribution.
+
+### 5. No Audit Trail for Sensitive Operations
+If administrative actions (e.g., editing match data, managing users) are added, regulators may require an immutable audit log. PostgreSQL's standard tables are mutable; the initial design has no append-only audit log table or external audit sink (e.g., CloudTrail, a WORM store).

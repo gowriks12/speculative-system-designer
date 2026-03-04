@@ -1,0 +1,24 @@
+Generated: 2026-02-25 03:57 UTC
+============================================================
+
+# Simulated Future: Scaling
+
+## Context
+The site gains traction during a major tournament (e.g., IPL, World Cup). Concurrent WebSocket connections spike to 100k+, match update frequency increases, and the data provider may offer streaming feeds instead of polling.
+
+## Pain Points Against Initial Architecture
+
+### 1. Redis Pub/Sub as a Single Point of Bottleneck
+Redis Pub/Sub is not partitioned or persistent. At high fan-out volumes, a single Redis node becomes a throughput ceiling. If the fan-out service crashes mid-event, messages are lost — there is no replay. Migrating to Kafka or a managed Kafka-equivalent (Confluent, Upstash Kafka) is the remediation, but it requires rearchitecting the consumer layer.
+
+### 2. WebSocket Statefulness Under Horizontal Scale
+Socket.IO connections are stateful. Scaling the fan-out service horizontally requires a shared adapter (Redis Adapter for Socket.IO), which adds operational complexity and re-introduces Redis as a coordination layer. Without this, clients connected to different pods miss events.
+
+### 3. Ingestion Service Polling Latency
+The polling model introduces artificial latency (typically 1–5s per poll cycle). At scale, users notice score delays, especially during high-intensity overs. Switching to a streaming/webhook model from the data provider is possible but requires reworking the ingestion contract.
+
+### 4. REST API and PostgreSQL Read Pressure
+Under high concurrent load, the REST API (match metadata, historical scores) will saturate PostgreSQL read replicas. A read-through cache (Redis or CDN-level) needs to be layered in — not present in the initial design.
+
+### 5. CDN and Frontend Cache Invalidation
+The React SPA served via CDN has no built-in cache invalidation strategy for score-bearing pages (e.g., SSR scoreboards). If the frontend evolves to include server-rendered content for SEO, the CDN layer needs cache purge hooks — absent from the initial design.
