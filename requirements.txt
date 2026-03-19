@@ -1,6 +1,0 @@
-mcp >= 1.26
-pydantic
-python-dotenv
-openai
-rich
-typer
