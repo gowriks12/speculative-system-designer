@@ -8,7 +8,7 @@ LangGraph requires.
 import json
 from mcp import ClientSession
 from openai import AsyncOpenAI
-from .state import DesignState
+from state import DesignState
 
 _llm = AsyncOpenAI()   # reads OPENAI_API_KEY from env
 

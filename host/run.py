@@ -36,8 +36,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamable_http_client
 
-from .handlers import sampling_handler, elicitation_handler
-from .graph import build_graph
+from handlers import sampling_handler, elicitation_handler
+from graph import build_graph
 
 load_dotenv()
 

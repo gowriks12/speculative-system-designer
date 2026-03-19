@@ -18,8 +18,8 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from mcp import ClientSession
 
-from .state import DesignState
-from .nodes import (
+from state import DesignState
+from nodes import (
     fetch_future_ids,
     generate_architecture_node,
     draw_diagram_node,
