@@ -1,0 +1,11 @@
+# Core MCP + LangGraph
+mcp>=1.26
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# LLM client
+openai>=1.30.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0

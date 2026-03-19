@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="320" viewBox="0 0 900 320" font-family="Arial, sans-serif" font-size="13" fill="#1e1e1e">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="320" fill="#ffffff"/>
+
+  <!-- ─── NODES ─────────────────────────────────────────────────── -->
+
+  <!-- A: generate (x=30) -->
+  <rect x="30" y="120" width="110" height="40" rx="6" fill="#dbe4ff" stroke="#4a9eed" stroke-width="1.5"/>
+  <text x="85" y="145" text-anchor="middle" font-size="13">generate</text>
+
+  <!-- B: draw_initial (x=185) — Excalidraw green -->
+  <rect x="185" y="120" width="120" height="40" rx="6" fill="#c3fae8" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="245" y="138" text-anchor="middle" font-size="13">draw_initial</text>
+  <text x="245" y="153" text-anchor="middle" font-size="11" fill="#555">(Excalidraw)</text>
+
+  <!-- C: run_evaluation? diamond (x=370) -->
+  <polygon points="415,110 470,140 415,170 360,140" fill="#fff3bf" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="415" y="137" text-anchor="middle" font-size="12">run</text>
+  <text x="415" y="151" text-anchor="middle" font-size="12">eval?</text>
+
+  <!-- D: simulate_future (x=530) -->
+  <rect x="520" y="120" width="140" height="40" rx="6" fill="#dbe4ff" stroke="#4a9eed" stroke-width="1.5"/>
+  <text x="590" y="145" text-anchor="middle" font-size="13">simulate_future</text>
+
+  <!-- E: propose_tradeoff (x=700) -->
+  <rect x="690" y="120" width="140" height="40" rx="6" fill="#dbe4ff" stroke="#4a9eed" stroke-width="1.5"/>
+  <text x="760" y="145" text-anchor="middle" font-size="13">propose_tradeoff</text>
+
+  <!-- F: more futures? diamond (x=790 → centred at 840) -->
+  <polygon points="840,195 890,225 840,255 790,225" fill="#fff3bf" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="840" y="221" text-anchor="middle" font-size="12">more</text>
+  <text x="840" y="235" text-anchor="middle" font-size="12">futures?</text>
+
+  <!-- G: finalize (x=640) -->
+  <rect x="630" y="205" width="110" height="40" rx="6" fill="#dbe4ff" stroke="#4a9eed" stroke-width="1.5"/>
+  <text x="685" y="230" text-anchor="middle" font-size="13">finalize</text>
+
+  <!-- H: draw_final (x=470) — Excalidraw green -->
+  <rect x="470" y="205" width="120" height="40" rx="6" fill="#c3fae8" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="530" y="223" text-anchor="middle" font-size="13">draw_final</text>
+  <text x="530" y="238" text-anchor="middle" font-size="11" fill="#555">(Excalidraw)</text>
+
+  <!-- I: END (two occurrences — share same visual, drawn at x=330 and x=330 bottom row) -->
+  <!-- END for "no" branch (top, y≈90) -->
+  <ellipse cx="415" cy="72" rx="30" ry="18" fill="#f8f8f8" stroke="#888" stroke-width="1.5"/>
+  <text x="415" y="77" text-anchor="middle" font-size="13">END</text>
+
+  <!-- END for final branch (bottom row) -->
+  <ellipse cx="350" cy="225" rx="30" ry="18" fill="#f8f8f8" stroke="#888" stroke-width="1.5"/>
+  <text x="350" y="230" text-anchor="middle" font-size="13">END</text>
+
+  <!-- ─── EDGES ─────────────────────────────────────────────────── -->
+
+  <!-- A → B -->
+  <line x1="140" y1="140" x2="183" y2="140" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- B → C -->
+  <line x1="305" y1="140" x2="358" y2="140" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- C → I (no, upward) -->
+  <line x1="415" y1="110" x2="415" y2="92" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="420" y="104" font-size="11" fill="#555">no</text>
+
+  <!-- C → D (yes, right) -->
+  <line x1="470" y1="140" x2="518" y2="140" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="488" y="134" font-size="11" fill="#555">yes</text>
+
+  <!-- D → E -->
+  <line x1="660" y1="140" x2="688" y2="140" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- E → F (down then right to diamond) -->
+  <polyline points="760,160 760,225 788,225" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- F → D (yes, loop back — up from diamond top) -->
+  <polyline points="840,195 840,100 660,100 660,120" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="844" y="165" font-size="11" fill="#555">yes</text>
+
+  <!-- F → G (no, left from diamond left point) -->
+  <line x1="790" y1="225" x2="742" y2="225" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="757" y="218" font-size="11" fill="#555">no</text>
+
+  <!-- G → H -->
+  <line x1="630" y1="225" x2="592" y2="225" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- H → END (bottom) -->
+  <line x1="470" y1="225" x2="382" y2="225" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ─── LEGEND ─────────────────────────────────────────────────── -->
+  <rect x="30" y="285" width="12" height="12" fill="#c3fae8" stroke="#22c55e" stroke-width="1"/>
+  <text x="47" y="296" font-size="11" fill="#555">Excalidraw node</text>
+  <rect x="155" y="285" width="12" height="12" fill="#fff3bf" stroke="#f59e0b" stroke-width="1"/>
+  <text x="172" y="296" font-size="11" fill="#555">Routing / decision</text>
+  <rect x="295" y="285" width="12" height="12" fill="#dbe4ff" stroke="#4a9eed" stroke-width="1"/>
+  <text x="312" y="296" font-size="11" fill="#555">LangGraph node</text>
+</svg>
