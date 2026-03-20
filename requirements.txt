@@ -1,3 +1,7 @@
+#################################
+# Client Requirements
+#################################
+
 # Core MCP + LangGraph
 mcp>=1.26
 langgraph>=0.2.0
@@ -9,3 +13,9 @@ openai>=1.30.0
 # Utilities
 python-dotenv>=1.0.0
 pydantic>=2.0.0
+
+###################################
+# Server Specific Requirements
+###################################
+rich
+typer
