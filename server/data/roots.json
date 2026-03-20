@@ -1,0 +1,45 @@
+{
+  "team_constraints": {
+    "id": "team_constraints",
+    "statement": "The system must be buildable and operable by a team of 6 engineers or fewer.",
+    "rationale": "Architectures that require constant specialization or 24/7 heroics will not be sustainable.",
+    "violation_examples": [
+      "multiple bespoke data pipelines",
+      "manual operational runbooks",
+      "infrastructure requiring deep vendor-specific expertise"
+    ]
+  },
+
+  "cost_discipline": {
+    "id": "cost_discipline",
+    "statement": "Baseline infrastructure costs must remain predictable and defensible to non-technical stakeholders.",
+    "rationale": "Unexpected cost growth erodes trust and constrains future investment.",
+    "violation_examples": [
+      "unbounded autoscaling without limits",
+      "costs tied directly to user behavior without controls",
+      "lack of cost visibility at service boundaries"
+    ]
+  },
+
+  "operational_observability": {
+    "id": "operational_observability",
+    "statement": "The system must be diagnosable without requiring ad-hoc instrumentation in production.",
+    "rationale": "Systems that cannot explain their own behavior increase mean time to recovery.",
+    "violation_examples": [
+      "missing correlation IDs",
+      "logs without contextual metadata",
+      "metrics that do not align with user-facing symptoms"
+    ]
+  },
+
+  "reversibility": {
+    "id": "reversibility",
+    "statement": "Major architectural decisions must be reversible without a full rewrite.",
+    "rationale": "Irreversible decisions increase long-term risk and lock the organization into early assumptions.",
+    "violation_examples": [
+      "deep coupling to proprietary services",
+      "schema designs that prevent evolution",
+      "hard-coded assumptions about scale or geography"
+    ]
+  }
+}
