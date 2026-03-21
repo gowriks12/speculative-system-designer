@@ -1,174 +1,65 @@
-# Speculative System Designer
+# Speculative System Designer — MCP Server
 
-> An MCP server + LangGraph host that generates, stress-tests, and governs software architectures through structured futures, explicit tradeoffs, and Excalidraw diagrams.
-
----
-
-## What Is This?
-
-Most architecture review processes happen too late and too politely. Teams propose a system, debate it briefly, then ship with unresolved assumptions baked in.
-
-**Speculative System Designer** flips that. It forces three things that are usually skipped:
-
-1. **Non-negotiable constraints** declared *before* design begins — called *Roots*
-2. **Pessimistic futures** simulated *against* the design after it is proposed
-3. **Explicit tradeoffs** accepted *on the record* before a final architecture is issued
-
-The project is split into two independent layers:
-
-| Layer | What it does |
-|---|---|
-| **Server** (`server/mcp_server.py`) | FastMCP server — exposes tools, enforces governance rules, manages state |
-| **Host / Client** (`host/`) | LangGraph orchestration — drives the server tools through a stateful graph, connects Excalidraw |
+> A FastMCP server that generates, stress-tests, and governs software architectures through non-negotiable root constraints, pessimistic futures, structured critiques, and explicit tradeoffs.
 
 ---
 
-## Repository Layout
+## What This Server Does
+
+Most architecture tools help you build. This one helps you **question**.
+
+The server enforces a governance pipeline in three stages:
+
+1. **Generate** — produces an architecture that must satisfy all root constraints before it is saved
+2. **Simulate** — stress-tests it against pessimistic future scenarios (scaling, security abuse, regulatory change)
+3. **Finalize** — refuses to issue a final architecture until every critique has a declared tradeoff
+
+Authority lives here. The prompts encoding judgment — root constraints, future review prompts, critique structure — are all defined on the server. A connected client cannot bypass or skip them.
+
+---
+
+## Directory Layout
 
 ```
-SpeculativeSystemDesigner/
-├── server/
-│   ├── mcp_server.py           ← FastMCP entry point (all tools registered here)
-│   ├── architectures.py        ← Architecture model + submit_architecture factory
-│   ├── critiques.py            ← Critique model, CRITIQUE_STORE, helpers
-│   ├── futures.py              ← Loads futures.json
-│   ├── roots.py                ← Loads roots.json + prompt formatter
-│   ├── store.py                ← In-memory REVIEW_STORE
-│   ├── declare_tradeoff.py     ← Records an accepted tradeoff
-│   ├── TOOLS.md                ← Tool-by-tool API reference
-│   ├── CONCEPTS.md             ← Deep-dive into Roots, Futures, Tradeoffs
-│   └── data/
-│       ├── roots.json          ← Non-negotiable architectural constraints
-│       └── futures.json        ← Pessimistic stress-test scenarios
-│
-├── host/
-│   ├── __init__.py
-│   ├── state.py                ← DesignState TypedDict
-│   ├── handlers.py             ← MCP sampling + elicitation callbacks
-│   ├── nodes.py                ← LangGraph node implementations
-│   ├── graph.py                ← Graph definition and routing logic
-│   └── run.py                  ← CLI entry point
-│
-├── graph_flow.svg              ← Visual graph flow reference
-├── requirements.txt
-├── pyproject.toml
-├── .env.example
-└── README.md
+server/
+├── mcp_server.py           ← FastMCP entry point — all tools and resources registered here
+├── architectures.py        ← Architecture model + submit_architecture factory
+├── critiques.py            ← Critique model, CRITIQUE_STORE, helpers
+├── futures.py              ← Loads data/futures.json
+├── roots.py                ← Loads data/roots.json + prompt formatter
+├── store.py                ← In-memory REVIEW_STORE
+├── declare_tradeoff.py     ← Records an accepted tradeoff against a critique
+├── TOOLS.md                ← Full tool-by-tool API reference
+├── CONCEPTS.md             ← Deep-dive into Roots, Futures, Tradeoffs
+└── data/
+    ├── roots.json          ← Non-negotiable architectural constraints
+    └── futures.json        ← Pessimistic stress-test scenarios
 ```
 
 ---
 
 ## Key Concepts
 
-| Concept | Description |
-|---|---|
-| **Root** | A non-negotiable architectural constraint (e.g. "must be operable by ≤ 6 engineers"). Violations block approval. Defined in `server/data/roots.json`. |
-| **Future** | A pessimistic scenario the system might have to operate in — scaling 10x, security abuse, regulatory change. Defined in `server/data/futures.json`. |
-| **Critique** | Structured LLM feedback produced by simulating a Future against an architecture. Contains a `summary` and up to 3 `risks`. |
-| **Tradeoff** | An explicit, human-accepted compromise that resolves a Critique. Must be declared before the final architecture is issued. |
+### Roots
 
----
+Roots are the constitutional layer — constraints that must be satisfied before any architecture is accepted. They are injected verbatim into the generation prompt so the client LLM is forced to reason about each one explicitly.
 
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   LangGraph Host (host/)                    │
-│   run.py ──► graph.py ──► nodes.py                          │
-│                  │                                          │
-│   handlers.py (sampling + elicitation callbacks)            │
-└─────────────┬───────────────────┬──────────────────────────┘
-              │ MCP stdio         │ MCP streamable-http
-              ▼                   ▼
-┌─────────────────────┐  ┌────────────────────────┐
-│  SSD MCP Server     │  │  Excalidraw MCP Server  │
-│  (mcp_server.py)    │  │  mcp.excalidraw.com/mcp │
-│                     │  └────────────────────────┘
-│  Tools              │
-│  ├─ generate_arch   │
-│  ├─ simulate_future │   Resources
-│  ├─ propose_trdoff  │   ├─ roots://governance
-│  ├─ finalize_arch   │   └─ roots://futures
-│  ├─ evaluate_arch   │
-│  ├─ list_roots      │   State (in-memory)
-│  ├─ list_futures    │   └─ REVIEW_STORE + CRITIQUE_STORE
-│  └─ write_arch      │
-│                     │
-│  data/              │
-│  ├─ server/data/    │
-│  │  ├─ roots.json   │
-│  │  └─ futures.json │
-└─────────────────────┘
-```
-
-**Authority belongs to the server.** Governance prompts — root constraints, future scenarios, critique structure — all live inside the MCP server. The client cannot bypass them.
-
-**Creativity belongs to the client.** The client LLM handles open-ended synthesis: proposing architectures, generating tradeoff options, writing the final document.
-
----
-
-## Server Features
-
-### Tools
-
-The server exposes eight tools over MCP. Five are async (they use MCP Sampling to delegate LLM calls back to the client), and three are synchronous utilities.
-
-#### `generate_architecture_tool` *(async)*
-Generates a system architecture that satisfies all Roots defined in `server/data/roots.json`. It uses **MCP Sampling** to send the prompt — including all root constraints verbatim — to the client LLM. The result is immediately saved to `REVIEW_STORE` and an `architecture_id` is returned for all subsequent tool calls.
-
-#### `simulate_future_tool` *(async)*
-Stress-tests a saved architecture against a single future scenario. Sends the future's `review_prompt` + the architecture text to the client LLM via Sampling, and expects a JSON response with `summary` (string) and `risks` (list). Creates and stores a `Critique` object.
-
-#### `propose_tradeoff_tool` *(async)*
-Two-phase tool that resolves a Critique:
-1. **Sampling phase** — the LLM generates exactly three tradeoff options (A, B, C) each with a `statement`, `sacrifice`, and `benefit`.
-2. **Elicitation phase** — the options are presented to the human via **MCP Elicitation**. The human picks one; the server records it via `declare_tradeoff` and marks the Critique resolved.
-
-The server never lets the LLM choose the tradeoff — that decision always belongs to the human.
-
-#### `evaluate_architecture_tool` *(async — orchestrator)*
-The high-level entry point for a full evaluation run. Internally calls `simulate_future_tool` for every future in `server/data/futures.json`, then `propose_tradeoff_tool` for every resulting Critique, then `finalize_architecture_tool`. The user is prompted (via Elicitation) once per future to select a tradeoff.
-
-#### `finalize_architecture_tool` *(async)*
-Produces the final governed architecture incorporating all accepted tradeoffs. Refuses to execute if no tradeoffs have been declared — the server enforces that every Critique must be resolved first. Uses Sampling to delegate synthesis to the client LLM.
-
-#### `list_roots_scope` *(sync)*
-Returns a list of the root constraint IDs currently loaded from `server/data/roots.json`.
-
-#### `list_futures_scope` *(sync)*
-Returns a list of the future IDs currently loaded from `server/data/futures.json`. Used by the LangGraph host at startup to discover futures dynamically without hardcoding.
-
-#### `write_architecture` *(sync)*
-Writes an architecture document (initial, simulated future, or final) to `architectures/<use_case>/` on disk.
-
-### Resources
-
-The server exposes two MCP Resources that any client can read directly:
-
-| URI | Contents |
-|---|---|
-| `roots://governance` | Full `server/data/roots.json` |
-| `roots://futures` | Full `server/data/futures.json` |
-
-### State Management
-
-All runtime state lives in two in-memory dicts (reset on server restart):
-
-| Store | Location | Contents |
-|---|---|---|
-| `REVIEW_STORE` | `store.py` | One entry per architecture: initial text, tradeoff list, critique ID list, final text |
-| `CRITIQUE_STORE` | `critiques.py` | One entry per `Critique` object, keyed by UUID |
-
-### Default Roots (`server/data/roots.json`)
+Defined in `data/roots.json`. Four defaults are provided:
 
 | Root ID | Constraint |
 |---|---|
-| `team_constraints` | System must be buildable and operable by ≤ 6 engineers. |
-| `cost_discipline` | Baseline infrastructure costs must be predictable and defensible to non-technical stakeholders. |
-| `operational_observability` | System must be diagnosable without ad-hoc instrumentation in production. |
-| `reversibility` | Major architectural decisions must be reversible without a full rewrite. |
+| `team_constraints` | System must be buildable and operable by ≤ 6 engineers |
+| `cost_discipline` | Baseline infrastructure costs must be predictable and defensible to non-technical stakeholders |
+| `operational_observability` | System must be diagnosable without ad-hoc instrumentation in production |
+| `reversibility` | Major architectural decisions must be reversible without a full rewrite |
 
-### Default Futures (`server/data/futures.json`)
+### Futures
+
+A future is a pessimistic scenario the system might have to operate in. The word is deliberate — not a "risk" (which implies probability) or a "test" (which implies pass/fail). The question is: *what breaks first?*
+
+Each future carries a `review_prompt` that is sent verbatim to the LLM via MCP Sampling. It instructs the model to act as a hostile review board and respond only in JSON.
+
+Defined in `data/futures.json`. Three defaults are provided:
 
 | Future ID | Assumption | Stance |
 |---|---|---|
@@ -176,115 +67,236 @@ All runtime state lives in two in-memory dicts (reset on server restart):
 | `security_abuse` | Attackers are competent; internal misconfigurations will occur | Adversarial |
 | `regulatory_compliance` | New compliance requirements arrive with short notice after the system ships | Literal |
 
+### Critiques
+
+A Critique is the structured output of running a Future against an architecture. It contains a `summary` (one-paragraph failure description) and up to three `risks`. Every Critique starts as `resolved: false` and must be resolved by a declared Tradeoff before the architecture can be finalized.
+
+### Tradeoffs
+
+A Tradeoff is the human's explicit on-the-record acknowledgement of a compromise. Once accepted, its statement is stored in `REVIEW_STORE` and passed verbatim into the finalization prompt — ensuring it actually shapes the final output rather than being silently ignored.
+
 ---
 
-## Host / Client (LangGraph)
+## Tools
 
-The `host/` package is a LangGraph orchestration layer that drives the SSD server tools through a stateful directed graph. It maintains two MCP sessions simultaneously — one to the SSD server (stdio) and one to the Excalidraw MCP server (HTTP).
+The server exposes eight tools. Five are async and use **MCP Sampling** to delegate LLM calls back to the connected client. Three are synchronous utilities.
 
-### Graph Flow
+> **Note:** MCP Sampling and MCP Elicitation are advanced MCP features. They are fully supported by the LangGraph host in `host/` but are **not supported by Claude Desktop**. If you want to connect this server to Claude Desktop, see the `simple-server` branch instead.
 
+---
+
+### `generate_architecture_tool` *(async)*
+
+Generates a system architecture constrained by all roots in `data/roots.json`.
+
+Uses MCP Sampling to send the prompt — including all root constraints formatted verbatim — to the client LLM. The LLM is required to explain how its design satisfies each root before providing the final architecture text. The result is saved to `REVIEW_STORE` and an `architecture_id` is returned.
+
+**Input**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `problem_statement` | string | ✅ | Plain-language description of the system to design |
+
+**Output**
+```json
+{
+  "status": "architecture_generated",
+  "architecture_id": "<uuid>",
+  "architecture_text": "<full architecture description>"
+}
 ```
-generate
-  └─► draw_initial (Excalidraw)
-          │
-          ├─[--no-eval / run_evaluation=False]──────────────► END
-          │
-          └─[run_evaluation=True]──► simulate_future ◄────────┐
-                                          │                    │
-                                          ▼                    │ (more futures)
-                                    propose_tradeoff           │
-                                          │                    │
-                                          ├─[more futures]─────┘
-                                          │
-                                          └─[all done]──► finalize
-                                                              │
-                                                              ▼
-                                                        draw_final (Excalidraw)
-                                                              │
-                                                              ▼
-                                                             END
+
+---
+
+### `simulate_future_tool` *(async)*
+
+Stress-tests a saved architecture against a single future scenario.
+
+Sends the future's `review_prompt` and the architecture text to the client LLM via Sampling. Expects a JSON response with `summary` and `risks`. Creates and stores a `Critique` object; appends its ID to the architecture's record in `REVIEW_STORE`.
+
+**Input**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `architecture_id` | string | ✅ | UUID from `generate_architecture_tool` |
+| `future_id` | string | ✅ | Key from `data/futures.json` (e.g. `"scaling"`) |
+
+**Output**
+```json
+{
+  "status": "critique_generated",
+  "critique": {
+    "id": "<uuid>",
+    "future": "scaling",
+    "summary": "...",
+    "risks": ["...", "...", "..."],
+    "required_tradeoff": "Unresolved",
+    "resolved": false
+  }
+}
 ```
 
-See `graph_flow.svg` for a visual version.
+---
 
-### Nodes (`host/nodes.py`)
+### `propose_tradeoff_tool` *(async)*
 
-| Node | MCP Tool Called | What It Does |
+Two-phase tool that resolves a Critique.
+
+**Phase 1 — Sampling:** the LLM generates exactly three tradeoff options (A, B, C), each with a `statement`, `sacrifice`, and `benefit`.
+
+**Phase 2 — Elicitation:** the options are presented to the human via MCP Elicitation. The human picks one. The server records the choice via `declare_tradeoff` and marks the Critique resolved.
+
+The server never lets the LLM choose the tradeoff — that decision always belongs to the human.
+
+**Input**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `architecture_id` | string | ✅ | UUID of the architecture under review |
+| `critique_id` | string | ✅ | UUID of the Critique to resolve |
+| `critique_summary` | string | ✅ | Human-readable summary of the problem |
+
+**Output**
+```json
+{
+  "status": "tradeoff_declared",
+  "selected": {
+    "id": "B",
+    "statement": "...",
+    "sacrifice": "...",
+    "benefit": "..."
+  }
+}
+```
+
+---
+
+### `evaluate_architecture_tool` *(async — orchestrator)*
+
+Runs the full evaluation pipeline for a saved architecture in one call.
+
+Internally calls `simulate_future_tool` for every future in `data/futures.json`, then `propose_tradeoff_tool` for every resulting Critique, then `finalize_architecture_tool`. The user is prompted via Elicitation once per future to select a tradeoff.
+
+**Input**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `architecture_id` | string | ✅ | UUID from `generate_architecture_tool` |
+
+**Output**
+```json
+{
+  "status": "evaluation_complete",
+  "final_architecture": {
+    "status": "finalized",
+    "final_architecture": "..."
+  }
+}
+```
+
+---
+
+### `finalize_architecture_tool` *(async)*
+
+Produces the final governed architecture incorporating all accepted tradeoffs.
+
+**Refuses to execute if no tradeoffs have been declared** — the server enforces that every Critique must be resolved first. Uses Sampling to delegate synthesis to the client LLM, passing both the original architecture text and all declared tradeoff statements.
+
+**Input**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `architecture_id` | string | ✅ | UUID of the architecture to finalize |
+
+**Output**
+```json
+{
+  "status": "finalized",
+  "final_architecture": "..."
+}
+```
+
+---
+
+### `list_roots_scope` *(sync)*
+
+Returns a list of root constraint IDs loaded from `data/roots.json`. Used by connected clients to discover what constraints are active without reading the file directly.
+
+---
+
+### `list_futures_scope` *(sync)*
+
+Returns a list of future IDs loaded from `data/futures.json`. Used by the LangGraph host at graph build time to discover futures dynamically — no hardcoding required.
+
+---
+
+### `write_architecture` *(sync)*
+
+Writes an architecture document to `architectures/<use_case>/` on disk.
+
+**Input**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `use_case` | string | ✅ | Folder name for this design session |
+| `doc_type` | string | ✅ | One of: `initial`, `simulated_future`, `final` |
+| `content` | string | ✅ | Full document text to write |
+| `future_name` | string | — | Required when `doc_type` is `simulated_future` |
+
+---
+
+## Resources
+
+Two MCP Resources are exposed for any client to read directly:
+
+| URI | Contents |
+|---|---|
+| `roots://governance` | Full contents of `data/roots.json` |
+| `roots://futures` | Full contents of `data/futures.json` |
+
+---
+
+## State Management
+
+All runtime state is held in two in-memory dicts. Both reset on server restart — for persistent multi-session deployments, replace them with a database.
+
+| Store | File | Contents |
 |---|---|---|
-| `generate` | `generate_architecture_tool` | Generates the initial architecture; seeds `architecture_id`, `architecture_text`, resets loop index |
-| `draw_initial` | Excalidraw `create_drawing` | Converts architecture text → Excalidraw elements JSON (via LLM) → creates diagram, stores `initial_diagram_url` |
-| `simulate_future` | `simulate_future_tool` | Simulates the next future in the list; appends Critique to state, increments `current_future_index` |
-| `propose_tradeoff` | `propose_tradeoff_tool` | Proposes options for the latest Critique; the elicitation callback resolves the choice; appends to `tradeoffs` |
-| `finalize` | `finalize_architecture_tool` | Synthesizes the final architecture from the initial design + all declared tradeoffs |
-| `draw_final` | Excalidraw `create_drawing` | Same as `draw_initial` but for the final architecture; stores `final_diagram_url` |
+| `REVIEW_STORE` | `store.py` | One entry per architecture: initial text, tradeoff list, critique ID list, final text |
+| `CRITIQUE_STORE` | `critiques.py` | One entry per `Critique` object, keyed by UUID |
 
-### Routing Logic (`host/graph.py`)
-
-Two conditional edges control the flow:
-
-- **After `draw_initial`**: branches on `state["run_evaluation"]` — goes to `simulate_future` if `True`, otherwise ends immediately. Controlled by the `--no-eval` CLI flag.
-- **After `propose_tradeoff`**: loops back to `simulate_future` while `current_future_index < len(future_ids)`, then proceeds to `finalize` when all futures are exhausted.
-
-Future IDs are fetched dynamically from the server via `list_futures_scope` at graph build time — the host never hardcodes future names.
-
-### State (`host/state.py`)
+### REVIEW_STORE schema
 
 ```python
-class DesignState(TypedDict):
-    problem_statement: str
-    run_evaluation: bool            # True = simulate futures, False = generate + draw only
-    architecture_id: Optional[str]
-    architecture_text: Optional[str]
-    critiques: List[dict]           # [{id, future, summary, risks, ...}]
-    tradeoffs: List[dict]           # [{critique_id, selected, ...}]
-    final_architecture: Optional[str]
-    current_future_index: int       # loop counter through futures
-    future_ids: List[str]
-    initial_diagram_url: Optional[str]
-    final_diagram_url: Optional[str]
+REVIEW_STORE[architecture_id] = {
+    "initial_architecture": str,   # raw text from generate_architecture_tool
+    "tradeoffs": [                 # appended by declare_tradeoff()
+        {"critique_id": str, "statement": str}
+    ],
+    "critiques": [str],            # list of critique UUIDs
+    "final_architecture": str | None
+}
 ```
-
-### Sampling & Elicitation Handlers (`host/handlers.py`)
-
-The host registers two callbacks with the MCP `ClientSession`:
-
-**`sampling_handler`** — called whenever the SSD server invokes `ctx.session.create_message`. Forwards the message to the configured OpenAI model and returns the result. This is how the server delegates all LLM work to the client without needing API keys of its own.
-
-**`elicitation_handler`** — called whenever the SSD server invokes `ctx.elicit` (currently in `propose_tradeoff_tool`). Behaviour depends on `ELICITATION_MODE`:
-
-| Mode | Behaviour |
-|---|---|
-| `llm` (default) | An LLM reads the A/B/C options and selects the most pragmatic one automatically |
-| `human` | LangGraph `interrupt()` pauses the graph; a human resumes it with `Command(resume="B")` |
-
-### Excalidraw Integration
-
-The host connects to the Excalidraw MCP server at `https://mcp.excalidraw.com/mcp` (overridable via `EXCALIDRAW_MCP_URL`). For each draw node it:
-
-1. Calls an LLM (gpt-4o-mini) to translate architecture prose into a valid Excalidraw elements JSON array (rectangles for services, arrows for data flows).
-2. Calls the Excalidraw `create_drawing` tool with those elements.
-3. Stores the returned shareable URL in `DesignState`.
-
-Two diagrams are produced per full run — initial and final — both URLs are printed at the end of the session.
 
 ---
 
-## Setup
+## MCP Features
 
-### Prerequisites
+| Feature | Used In |
+|---|---|
+| **Tools** | All eight `@mcp.tool()` functions |
+| **Resources** | `roots://governance`, `roots://futures` |
+| **Sampling** (`ctx.session.create_message`) | `generate_architecture_tool`, `simulate_future_tool`, `propose_tradeoff_tool` (phase 1), `finalize_architecture_tool` — the server delegates all LLM calls back to the client |
+| **Elicitation** (`ctx.elicit`) | `propose_tradeoff_tool` (phase 2) — the server presents tradeoff options and waits for a human selection |
 
-- Python 3.11+
-- [Claude Desktop](https://claude.ai/download) or any MCP-compatible client
-- An OpenAI API key (for the LangGraph host)
+---
 
-### Install
+## Installation
 
 ```bash
-git clone https://github.com/yourname/speculative-system-designer
-cd speculative-system-designer
-
+# From the project root
 python -m venv .venv
+
 # Windows
 .venv\Scripts\activate
 # Unix / macOS
@@ -293,106 +305,32 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Configure
-
-```bash
-cp .env.example .env
-# Edit .env — set OPENAI_API_KEY at minimum
-```
-
-Key environment variables:
-
-| Variable | Default | Description |
-|---|---|---|
-| `OPENAI_API_KEY` | — | Required for the LangGraph host |
-| `SERVER_PYTHON` | `.venv/Scripts/python.exe` (Win) / `.venv/bin/python` (Unix) | Path to the venv Python |
-| `SERVER_MODULE` | `server.mcp_server` | Python module path for the MCP server |
-| `ELICITATION_MODE` | `llm` | `llm` for fully agentic, `human` to pause at each tradeoff |
-| `LLM_MODEL` | `gpt-4o-mini` | OpenAI model for sampling and elicitation |
-| `EXCALIDRAW_MCP_URL` | `https://mcp.excalidraw.com/mcp` | Excalidraw MCP server URL |
-
 ---
 
 ## Running
 
-### Option A — LangGraph Host (full agentic run)
-
-```bash
-# Full run: generate → evaluate all futures → finalize → draw both diagrams
-python -m host.run
-
-# Skip evaluation: generate + draw initial diagram only
-python -m host.run --no-eval
-```
-
-End of run output:
-```
-========================================
-DESIGN SESSION COMPLETE
-========================================
-Architecture ID      : <uuid>
-Initial diagram      : https://excalidraw.com/#...
-Futures simulated    : 3
-Tradeoffs declared   : 3
-Final diagram        : https://excalidraw.com/#...
-
-FINAL ARCHITECTURE:
-...
-```
-
-### Option B — Claude Desktop
-
-> ⚠️ **Claude Desktop Compatibility**
->
-> The server on this branch (`main`) uses **MCP Sampling** and **MCP Elicitation** — two features that Claude Desktop does not currently support. Connecting this server directly to Claude Desktop will result in tool calls that silently fail or hang.
->
-> **To use Speculative System Designer with Claude Desktop, switch to the `simple-server` branch**, which provides a Claude-compatible server that replaces Sampling and Elicitation with self-contained tool logic:
->
-> ```bash
-> git checkout simple-server
-> ```
->
-> Then follow the setup and Claude Desktop configuration instructions in that branch's README.
-
-### Option C — HTTP Transport
-
-```python
-# In server/mcp_server.py, change the last line to:
-mcp.run(transport="streamable-http")
-```
+### stdio (default — for programmatic clients and the LangGraph host)
 
 ```bash
 python -m server.mcp_server
-# Server available at http://127.0.0.1:8000/mcp
 ```
 
----
+### Streamable HTTP
 
-## Human-in-the-Loop Mode
-
-Set `ELICITATION_MODE=human` in `.env`. The graph pauses at each `propose_tradeoff_tool` call via LangGraph `interrupt()`.
-
-To resume:
+Change the last line of `mcp_server.py`:
 
 ```python
-from langgraph.types import Command
-
-config = {"configurable": {"thread_id": "design-session-1"}}
-
-# First ainvoke pauses at the first tradeoff
-result = await graph.ainvoke(initial_state, config=config)
-
-# Resume with the human's choice
-result = await graph.ainvoke(Command(resume="B"), config=config)
+mcp.run(transport="streamable-http")
+# Server available at http://127.0.0.1:8000/mcp
 ```
 
 ---
 
 ## Customising Roots and Futures
 
-Both files are plain JSON — no code changes required.
+Both files are plain JSON. No code changes are required — the server reloads them on next startup.
 
-### Adding a Root (`server/data/roots.json`)
+### Adding a Root (`data/roots.json`)
 
 ```json
 {
@@ -407,9 +345,9 @@ Both files are plain JSON — no code changes required.
 }
 ```
 
-Roots are injected into the next `generate_architecture_tool` call automatically.
+### Adding a Future (`data/futures.json`)
 
-### Adding a Future (`server/data/futures.json`)
+The `review_prompt` must instruct the model to respond only in JSON with `summary` (string) and `risks` (array of strings). Markdown fences are stripped automatically if the model includes them.
 
 ```json
 {
@@ -418,53 +356,36 @@ Roots are injected into the next `generate_architecture_tool` call automatically
     "description": "What this scenario assumes.",
     "assumption": "The specific pessimistic assumption.",
     "stance": "pessimistic | adversarial | literal",
+    "stress_points": ["..."],
+    "failure_modes": ["..."],
+    "early_warning_signals": ["..."],
     "review_prompt": "You are a [role]. Given this architecture... Respond ONLY in JSON: {\"summary\": \"...\", \"risks\": [\"...\"]}"
   }
 }
 ```
 
-The `review_prompt` **must** instruct the model to return JSON with `summary` (string) and `risks` (array of strings). The LangGraph host picks up new futures automatically via `list_futures_scope` at graph build time.
-
 ---
 
-## Swapping the LLM (Host)
+## Claude Desktop
 
-The host uses OpenAI by default. To switch to Anthropic, edit `host/handlers.py` and `host/nodes.py`:
-
-```python
-from anthropic import AsyncAnthropic
-_client = AsyncAnthropic()   # reads ANTHROPIC_API_KEY
-
-# In sampling_handler, replace the openai call with:
-response = await _client.messages.create(
-    model="claude-sonnet-4-5",
-    max_tokens=800,
-    messages=messages,
-)
-text = response.content[0].text
-```
-
----
-
-## MCP Features Used
-
-| Feature | Where |
-|---|---|
-| **Tools** | All `@mcp.tool()` functions in `mcp_server.py` |
-| **Resources** | `roots://governance`, `roots://futures` |
-| **Sampling** (`ctx.session.create_message`) | Architecture generation, future simulation, tradeoff option generation, finalization — server delegates LLM calls back to the client |
-| **Elicitation** (`ctx.elicit`) | `propose_tradeoff_tool` — server presents choices to the human and waits for a selection |
+> ⚠️ **Not compatible with this branch.**
+>
+> This server uses MCP Sampling and MCP Elicitation, which Claude Desktop does not currently support. Connecting it directly will result in tool calls that silently fail or hang.
+>
+> Switch to the `simple-server` branch for a Claude Desktop-compatible version:
+>
+> ```bash
+> git checkout simple-server
+> ```
 
 ---
 
 ## Design Principles
 
-**Authority belongs to the server.** Governance prompts live inside the MCP server. The client cannot skip or alter them.
+**Authority belongs to the server.** Governance prompts — root constraints, future scenarios, critique structure — all live here. The client cannot skip or alter them.
 
-**Creativity belongs to the client.** The client LLM handles open-ended synthesis.
+**The server can say no.** `finalize_architecture_tool` refuses to produce output until every Critique is resolved by a declared Tradeoff.
 
-**Tradeoffs are first-class artifacts.** Every accepted tradeoff is persisted in `REVIEW_STORE` and passed verbatim into the finalization prompt. Nothing is silently discarded.
+**Tradeoffs are first-class artifacts.** Every accepted tradeoff is persisted and passed verbatim into the finalization prompt. Nothing is silently discarded.
 
-**The server can say no.** `finalize_architecture_tool` refuses to produce a final architecture until every Critique is resolved.
-
----
+**The server never chooses the tradeoff.** That decision always belongs to the human, enforced via MCP Elicitation.
