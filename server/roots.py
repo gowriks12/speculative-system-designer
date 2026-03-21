@@ -12,7 +12,9 @@ Each root has:
 import json
 from pathlib import Path
 
-_DATA_PATH = Path(__file__) / "data" / "roots.json"
+SERVER_PATH = Path(__file__).parent
+
+_DATA_PATH = SERVER_PATH / "data" / "roots.json"
 
 
 def load_roots() -> dict:

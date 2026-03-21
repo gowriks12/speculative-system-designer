@@ -1,0 +1,450 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [
+    {
+      "type": "text",
+      "id": "title",
+      "x": 400,
+      "y": 15,
+      "width": 300,
+      "height": 30,
+      "text": "Final Governed Architecture",
+      "fontSize": 24,
+      "strokeColor": "#1e1e1e",
+      "fontFamily": 1
+    },
+    {
+      "type": "text",
+      "id": "row1_lbl",
+      "x": 60,
+      "y": 62,
+      "width": 200,
+      "height": 18,
+      "text": "Event Pipeline",
+      "fontSize": 13,
+      "strokeColor": "#8b5cf6",
+      "fontFamily": 1
+    },
+    {
+      "type": "text",
+      "id": "row2_lbl",
+      "x": 60,
+      "y": 207,
+      "width": 200,
+      "height": 18,
+      "text": "API & Security",
+      "fontSize": 13,
+      "strokeColor": "#8b5cf6",
+      "fontFamily": 1
+    },
+    {
+      "type": "text",
+      "id": "row3_lbl",
+      "x": 60,
+      "y": 357,
+      "width": 200,
+      "height": 18,
+      "text": "Observability",
+      "fontSize": 13,
+      "strokeColor": "#8b5cf6",
+      "fontFamily": 1
+    },
+    {
+      "type": "rectangle",
+      "id": "r1",
+      "x": 100,
+      "y": 85,
+      "width": 180,
+      "height": 70,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#a5d8ff",
+      "fillStyle": "solid",
+      "strokeColor": "#4a9eed",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "t1",
+      "x": 135,
+      "y": 108,
+      "width": 110,
+      "height": 22,
+      "text": "Amazon SQS",
+      "fontSize": 17,
+      "strokeColor": "#1e1e1e",
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "r1"
+    },
+    {
+      "type": "rectangle",
+      "id": "r2",
+      "x": 360,
+      "y": 85,
+      "width": 180,
+      "height": 80,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#d0bfff",
+      "fillStyle": "solid",
+      "strokeColor": "#8b5cf6",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "t2",
+      "x": 388,
+      "y": 108,
+      "width": 124,
+      "height": 45,
+      "text": "AWS Lambda\n(Processing)",
+      "fontSize": 17,
+      "strokeColor": "#1e1e1e",
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "r2"
+    },
+    {
+      "type": "rectangle",
+      "id": "r3",
+      "x": 640,
+      "y": 85,
+      "width": 180,
+      "height": 70,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#c3fae8",
+      "fillStyle": "solid",
+      "strokeColor": "#22c55e",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "t3",
+      "x": 675,
+      "y": 108,
+      "width": 110,
+      "height": 22,
+      "text": "Amazon S3",
+      "fontSize": 17,
+      "strokeColor": "#1e1e1e",
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "r3"
+    },
+    {
+      "type": "rectangle",
+      "id": "r4",
+      "x": 920,
+      "y": 85,
+      "width": 180,
+      "height": 80,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeColor": "#22c55e",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "t4",
+      "x": 945,
+      "y": 108,
+      "width": 130,
+      "height": 45,
+      "text": "PostgreSQL\n(Database)",
+      "fontSize": 17,
+      "strokeColor": "#1e1e1e",
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "r4"
+    },
+    {
+      "type": "rectangle",
+      "id": "r5",
+      "x": 360,
+      "y": 230,
+      "width": 180,
+      "height": 80,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#f59e0b",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "t5",
+      "x": 388,
+      "y": 253,
+      "width": 124,
+      "height": 45,
+      "text": "IAM Policy\nAuditing",
+      "fontSize": 17,
+      "strokeColor": "#1e1e1e",
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "r5"
+    },
+    {
+      "type": "rectangle",
+      "id": "r6",
+      "x": 640,
+      "y": 230,
+      "width": 180,
+      "height": 70,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#f59e0b",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "t6",
+      "x": 650,
+      "y": 253,
+      "width": 160,
+      "height": 22,
+      "text": "Budget Monitoring",
+      "fontSize": 17,
+      "strokeColor": "#1e1e1e",
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "r6"
+    },
+    {
+      "type": "rectangle",
+      "id": "r7",
+      "x": 360,
+      "y": 380,
+      "width": 180,
+      "height": 80,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#f59e0b",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "t7",
+      "x": 388,
+      "y": 403,
+      "width": 124,
+      "height": 45,
+      "text": "AWS CloudWatch\n(Logging)",
+      "fontSize": 17,
+      "strokeColor": "#1e1e1e",
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "r7"
+    },
+    {
+      "type": "rectangle",
+      "id": "r8",
+      "x": 640,
+      "y": 380,
+      "width": 180,
+      "height": 80,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#f59e0b",
+      "strokeWidth": 2
+    },
+    {
+      "type": "text",
+      "id": "t8",
+      "x": 672,
+      "y": 403,
+      "width": 116,
+      "height": 45,
+      "text": "Prometheus\n& Grafana",
+      "fontSize": 17,
+      "strokeColor": "#1e1e1e",
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "r8"
+    },
+    {
+      "type": "arrow",
+      "id": "a1",
+      "x": 280,
+      "y": 120,
+      "width": 80,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          80,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 2
+    },
+    {
+      "type": "arrow",
+      "id": "a2",
+      "x": 560,
+      "y": 120,
+      "width": 80,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          80,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 2
+    },
+    {
+      "type": "arrow",
+      "id": "a3",
+      "x": 840,
+      "y": 120,
+      "width": 80,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          80,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 2
+    },
+    {
+      "type": "arrow",
+      "id": "a4",
+      "x": 450,
+      "y": 170,
+      "width": 0,
+      "height": 60,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          60
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#22c55e",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed"
+    },
+    {
+      "type": "arrow",
+      "id": "a5",
+      "x": 640,
+      "y": 170,
+      "width": 0,
+      "height": 60,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          60
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#22c55e",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed"
+    },
+    {
+      "type": "arrow",
+      "id": "a6",
+      "x": 450,
+      "y": 310,
+      "width": 0,
+      "height": 70,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          70
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#f59e0b",
+      "strokeWidth": 1,
+      "strokeStyle": "dashed"
+    },
+    {
+      "type": "arrow",
+      "id": "a7",
+      "x": 730,
+      "y": 310,
+      "width": 0,
+      "height": 70,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          70
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#f59e0b",
+      "strokeWidth": 1,
+      "strokeStyle": "dashed"
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}

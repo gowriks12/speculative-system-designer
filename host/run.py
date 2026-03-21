@@ -39,7 +39,7 @@ from mcp.client.streamable_http import streamable_http_client
 from handlers import sampling_handler, elicitation_handler
 from graph import build_graph
 
-load_dotenv()
+load_dotenv(override=True)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -86,6 +86,14 @@ async def main(run_evaluation: bool = True):
 
                     await ssd_session.initialize()
                     await ex_session.initialize()
+                    # tools = await ex_session.list_tools()
+                    # print("\n[debug] Excalidraw tools available:")
+                    # for t in tools.tools:
+                    #     print(f"  - {t.name}")
+                    #     print(f"    {t.description}")
+                    #     if hasattr(t, 'inputSchema') and t.inputSchema:
+                    #         print(f"    params: {list(t.inputSchema.get('properties', {}).keys())}")
+                    # print()
 
                     graph  = await build_graph(ssd_session, ex_session)
                     config = {"configurable": {"thread_id": "design-session-1"}}

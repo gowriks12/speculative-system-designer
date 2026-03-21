@@ -13,7 +13,9 @@ Each future has:
 import json
 from pathlib import Path
 
-_DATA_PATH = Path(__file__) / "data" / "futures.json"
+SERVER_PATH = Path(__file__).parent
+
+_DATA_PATH = SERVER_PATH / "data" / "futures.json"
 
 
 def load_futures() -> dict:

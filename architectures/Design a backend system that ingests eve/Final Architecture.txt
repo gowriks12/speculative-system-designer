@@ -1,0 +1,8 @@
+Generated: 2026-03-20 22:16 UTC
+============================================================
+
+The final architecture for the event ingestion and analytics system leverages a serverless framework, primarily utilizing AWS services for scalability and cost-effectiveness. Incoming events are first sent to an Amazon SQS queue, which buffers the events and decouples the ingestion process from the AWS Lambda functions that handle event processing. Each Lambda function processes messages from the SQS queue asynchronously, executing business logic and transforming the data as necessary before storing raw events in Amazon S3 and structured data in a PostgreSQL database. 
+
+The PostgreSQL database is designed with a modular schema to facilitate easy modifications without extensive rewrites. Observability is integrated through structured logging using AWS CloudWatch and centralized monitoring with Prometheus and Grafana, enabling correlation of logs across Lambda invocations through propagation of unique correlation IDs. Automated tools for IAM policy auditing are deployed to ensure compliance and security, monitoring configurations to prevent unauthorized access and facilitate adherence to the principle of least privilege. 
+
+The architecture additionally implements budget monitoring and cost controls, providing stakeholders with clear visibility on expenses while utilizing tiered data storage solutions for cost efficiency. Both the processing and storage services are managed in a way that maintains operational resilience and flexibility, ensuring long-term sustainability of the system.

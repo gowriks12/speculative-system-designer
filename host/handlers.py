@@ -24,6 +24,8 @@ from openai import AsyncOpenAI
 
 ELICITATION_MODE = os.getenv("ELICITATION_MODE", "llm")
 LLM_MODEL        = os.getenv("LLM_MODEL", "gpt-4o-mini")
+from dotenv import load_dotenv
+load_dotenv(override=True)  # add this before AsyncOpenAI() is instantiated
 
 _client = AsyncOpenAI()   # reads OPENAI_API_KEY from env
 
@@ -42,7 +44,7 @@ async def sampling_handler(
     response = await _client.chat.completions.create(
         model=LLM_MODEL,
         messages=messages,
-        max_tokens=params.max_tokens or 800,
+        # max_tokens=params.max_tokens or 800,
     )
     return CreateMessageResult(
         role="assistant",

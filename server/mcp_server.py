@@ -15,6 +15,9 @@ import json
 from pathlib import Path
 from uuid import uuid4
 from datetime import datetime
+import sys
+
+sys.path.insert(0, str(Path(__file__).parent))
 
 from mcp.server.fastmcp import FastMCP, Context
 from mcp.types import SamplingMessage, TextContent
@@ -36,7 +39,7 @@ mcp = FastMCP("SpeculativeSystemDesigner")
 # Load static data once at startup so tools never hit disk on every call.
 FUTURES: dict = load_futures()
 ROOTS: dict = load_roots()
-OUTPUT_DIR = Path(__file__) / "architectures"  # pre-defined output location
+OUTPUT_DIR = Path(__file__).parent.parent / "architectures"  # pre-defined output location
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 
@@ -458,9 +461,17 @@ def list_roots_scope():
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def list_futures_scope():
+def list_futures_tool():
     """List the future scopes available to simulate"""
-    return list(FUTURES.keys())
+    # return list(FUTURES.keys())
+    return json.dumps({
+            fid: {
+                "description": f["description"],
+                "stance":       f["stance"],
+                "assumption":   f["assumption"],
+            }
+            for fid, f in FUTURES.items()
+        }, indent=2)
 
 # ---------------------------------------------------------------------------
 # Tool 8 — Write architecture information to disk tool
