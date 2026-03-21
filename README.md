@@ -27,6 +27,10 @@ The project is split into two independent layers:
 
 ```
 SpeculativeSystemDesigner/
+├── data/
+│   ├── roots.json              ← Non-negotiable architectural constraints
+│   └── futures.json            ← Pessimistic stress-test scenarios
+│
 ├── server/
 │   ├── mcp_server.py           ← FastMCP entry point (all tools registered here)
 │   ├── architectures.py        ← Architecture model + submit_architecture factory
@@ -36,10 +40,7 @@ SpeculativeSystemDesigner/
 │   ├── store.py                ← In-memory REVIEW_STORE
 │   ├── declare_tradeoff.py     ← Records an accepted tradeoff
 │   ├── TOOLS.md                ← Tool-by-tool API reference
-│   ├── CONCEPTS.md             ← Deep-dive into Roots, Futures, Tradeoffs
-│   └── data/
-│       ├── roots.json          ← Non-negotiable architectural constraints
-│       └── futures.json        ← Pessimistic stress-test scenarios
+│   └── CONCEPTS.md             ← Deep-dive into Roots, Futures, Tradeoffs
 │
 ├── host/
 │   ├── __init__.py
@@ -62,8 +63,8 @@ SpeculativeSystemDesigner/
 
 | Concept | Description |
 |---|---|
-| **Root** | A non-negotiable architectural constraint (e.g. "must be operable by ≤ 6 engineers"). Violations block approval. Defined in `server/data/roots.json`. |
-| **Future** | A pessimistic scenario the system might have to operate in — scaling 10x, security abuse, regulatory change. Defined in `server/data/futures.json`. |
+| **Root** | A non-negotiable architectural constraint (e.g. "must be operable by ≤ 6 engineers"). Violations block approval. Defined in `data/roots.json`. |
+| **Future** | A pessimistic scenario the system might have to operate in — scaling 10x, security abuse, regulatory change. Defined in `data/futures.json`. |
 | **Critique** | Structured LLM feedback produced by simulating a Future against an architecture. Contains a `summary` and up to 3 `risks`. |
 | **Tradeoff** | An explicit, human-accepted compromise that resolves a Critique. Must be declared before the final architecture is issued. |
 
@@ -95,9 +96,8 @@ SpeculativeSystemDesigner/
 │  └─ write_arch      │
 │                     │
 │  data/              │
-│  ├─ server/data/    │
-│  │  ├─ roots.json   │
-│  │  └─ futures.json │
+│  ├─ roots.json      │
+│  └─ futures.json    │
 └─────────────────────┘
 ```
 
@@ -114,7 +114,7 @@ SpeculativeSystemDesigner/
 The server exposes eight tools over MCP. Five are async (they use MCP Sampling to delegate LLM calls back to the client), and three are synchronous utilities.
 
 #### `generate_architecture_tool` *(async)*
-Generates a system architecture that satisfies all Roots defined in `server/data/roots.json`. It uses **MCP Sampling** to send the prompt — including all root constraints verbatim — to the client LLM. The result is immediately saved to `REVIEW_STORE` and an `architecture_id` is returned for all subsequent tool calls.
+Generates a system architecture that satisfies all Roots defined in `data/roots.json`. It uses **MCP Sampling** to send the prompt — including all root constraints verbatim — to the client LLM. The result is immediately saved to `REVIEW_STORE` and an `architecture_id` is returned for all subsequent tool calls.
 
 #### `simulate_future_tool` *(async)*
 Stress-tests a saved architecture against a single future scenario. Sends the future's `review_prompt` + the architecture text to the client LLM via Sampling, and expects a JSON response with `summary` (string) and `risks` (list). Creates and stores a `Critique` object.
@@ -127,16 +127,16 @@ Two-phase tool that resolves a Critique:
 The server never lets the LLM choose the tradeoff — that decision always belongs to the human.
 
 #### `evaluate_architecture_tool` *(async — orchestrator)*
-The high-level entry point for a full evaluation run. Internally calls `simulate_future_tool` for every future in `server/data/futures.json`, then `propose_tradeoff_tool` for every resulting Critique, then `finalize_architecture_tool`. The user is prompted (via Elicitation) once per future to select a tradeoff.
+The high-level entry point for a full evaluation run. Internally calls `simulate_future_tool` for every future in `data/futures.json`, then `propose_tradeoff_tool` for every resulting Critique, then `finalize_architecture_tool`. The user is prompted (via Elicitation) once per future to select a tradeoff.
 
 #### `finalize_architecture_tool` *(async)*
 Produces the final governed architecture incorporating all accepted tradeoffs. Refuses to execute if no tradeoffs have been declared — the server enforces that every Critique must be resolved first. Uses Sampling to delegate synthesis to the client LLM.
 
 #### `list_roots_scope` *(sync)*
-Returns a list of the root constraint IDs currently loaded from `server/data/roots.json`.
+Returns a list of the root constraint IDs currently loaded from `data/roots.json`.
 
 #### `list_futures_scope` *(sync)*
-Returns a list of the future IDs currently loaded from `server/data/futures.json`. Used by the LangGraph host at startup to discover futures dynamically without hardcoding.
+Returns a list of the future IDs currently loaded from `data/futures.json`. Used by the LangGraph host at startup to discover futures dynamically without hardcoding.
 
 #### `write_architecture` *(sync)*
 Writes an architecture document (initial, simulated future, or final) to `architectures/<use_case>/` on disk.
@@ -147,8 +147,8 @@ The server exposes two MCP Resources that any client can read directly:
 
 | URI | Contents |
 |---|---|
-| `roots://governance` | Full `server/data/roots.json` |
-| `roots://futures` | Full `server/data/futures.json` |
+| `roots://governance` | Full `data/roots.json` |
+| `roots://futures` | Full `data/futures.json` |
 
 ### State Management
 
@@ -159,7 +159,7 @@ All runtime state lives in two in-memory dicts (reset on server restart):
 | `REVIEW_STORE` | `store.py` | One entry per architecture: initial text, tradeoff list, critique ID list, final text |
 | `CRITIQUE_STORE` | `critiques.py` | One entry per `Critique` object, keyed by UUID |
 
-### Default Roots (`server/data/roots.json`)
+### Default Roots (`data/roots.json`)
 
 | Root ID | Constraint |
 |---|---|
@@ -168,7 +168,7 @@ All runtime state lives in two in-memory dicts (reset on server restart):
 | `operational_observability` | System must be diagnosable without ad-hoc instrumentation in production. |
 | `reversibility` | Major architectural decisions must be reversible without a full rewrite. |
 
-### Default Futures (`server/data/futures.json`)
+### Default Futures (`data/futures.json`)
 
 | Future ID | Assumption | Stance |
 |---|---|---|
@@ -342,17 +342,31 @@ FINAL ARCHITECTURE:
 
 ### Option B — Claude Desktop
 
-> ⚠️ **Claude Desktop Compatibility**
->
-> The server on this branch (`main`) uses **MCP Sampling** and **MCP Elicitation** — two features that Claude Desktop does not currently support. Connecting this server directly to Claude Desktop will result in tool calls that silently fail or hang.
->
-> **To use Speculative System Designer with Claude Desktop, switch to the `simple-server` branch**, which provides a Claude-compatible server that replaces Sampling and Elicitation with self-contained tool logic:
->
-> ```bash
-> git checkout simple-server
-> ```
->
-> Then follow the setup and Claude Desktop configuration instructions in that branch's README.
+Add the server to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "speculative-system-designer": {
+      "command": "/path/to/.venv/bin/python",
+      "args": ["/path/to/speculative-system-designer/server/mcp_server.py"],
+      "cwd": "/path/to/speculative-system-designer",
+      "env": {
+        "PYTHONPATH": "/path/to/speculative-system-designer"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop and run:
+
+```
+Design a backend system that ingests events asynchronously, processes them
+in near-real-time, and exposes analytics APIs for customers. Team has 4 engineers.
+```
+
+Claude will call `generate_architecture_tool`, then `evaluate_architecture_tool`, presenting tradeoff choices along the way before delivering a finalized, self-aware architecture.
 
 ### Option C — HTTP Transport
 
@@ -392,7 +406,7 @@ result = await graph.ainvoke(Command(resume="B"), config=config)
 
 Both files are plain JSON — no code changes required.
 
-### Adding a Root (`server/data/roots.json`)
+### Adding a Root (`data/roots.json`)
 
 ```json
 {
@@ -409,7 +423,7 @@ Both files are plain JSON — no code changes required.
 
 Roots are injected into the next `generate_architecture_tool` call automatically.
 
-### Adding a Future (`server/data/futures.json`)
+### Adding a Future (`data/futures.json`)
 
 ```json
 {
@@ -467,4 +481,3 @@ text = response.content[0].text
 
 **The server can say no.** `finalize_architecture_tool` refuses to produce a final architecture until every Critique is resolved.
 
----
